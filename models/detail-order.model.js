@@ -4,11 +4,13 @@ const Schema = mongoose.Schema;
 const DetailOrderSchema = new Schema({
     quantity: {
         type: Number,
-        default: true,
+        default: 0,
+        required: true,
     },
     size: {
         type: String,
-        default: true,
+        default: '',
+        required: true,
     },
     id_product: {
         type: mongoose.Schema.Types.ObjectId,

@@ -1,3 +1,4 @@
+const cors = require('cors');
 const express = require('express');
 const bodyParser = require('body-parser');
 const app = express();
@@ -11,6 +12,8 @@ const multerStorageCloundinary = require('multer-storage-cloudinary');
 const siteRouter = require('./API/router/site.router');
 const userRouter = require('./API/router/user.router');
 const productRouter = require('./API/router/product.router');
+const categoryRouter = require('./API/router/category.router');
+const orderRouter = require('./API/router/order.router');
 
 const AccountModel = require('./models/user.model');
 const ProductModel = require('./models/product.model');
@@ -30,6 +33,8 @@ connect();
 app.use(siteRouter);
 app.use(userRouter);
 app.use(productRouter);
+app.use(categoryRouter);
+app.use(orderRouter);
 //app.use('/api/account/', AccountRouter)
 app.listen(3000, () => {
     console.log(`Server started on port`);

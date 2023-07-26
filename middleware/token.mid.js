@@ -8,7 +8,7 @@ const tokenMiddleware = {
     verifyToken: (req, res, next) => {
         try {
             const token = req.headers.token;
-            const userId = jwt.verify(token, 'password');
+            const userId = jwt.verify(token, env.JWT_SECRET);
             AccountModel.findOne({
                 _id: userId,
             });

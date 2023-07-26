@@ -10,7 +10,7 @@ const SiteController = {
                 userId: item._id,
                 isAdmin: item.isAdmin,
             },
-            'password',
+            process.env.JWT_SECRET,
             { expiresIn: '12d' },
         );
     },
@@ -23,25 +23,27 @@ const SiteController = {
                 email: Email,
             });
             if (!ExistingEmail) {
-                res.status(500).json({
+                res.status(404).json({
                     message: 'User not found!',
                 });
             }
-            const validPassword = await bcrypt.compare(req.body.password, ExistingEmail.password);
+            const validPassword = await bcrypt.compare(Password, ExistingEmail.password);
             if (!validPassword) {
-                return res.status(404).json({ message: 'Wrong password!' });
+                return res.status(401).json({ message: 'Wrong password!' });
             }
             const accessToken = SiteController.getAccessToken(ExistingEmail);
             if (ExistingEmail && validPassword) {
-                console.log(accessToken);
-                const { password, ...others } = user._doc;
+                //console.log(accessToken);
+                const { password, ...others } = ExistingEmail._doc;
                 return res.status(200).json({
-                    message: 'Ban dang nhap thanh cong',
+                    message: 'Logged in successfully',
+                    accessToken: accessToken,
+                    user: others,
                     //
                 });
             } else {
                 return res.status(500).json({
-                    message: 'Dang nhap that bai',
+                    message: 'Failed login!',
                 });
             }
         } catch (error) {
@@ -64,11 +66,11 @@ const SiteController = {
             });
             if (existedEmail) {
                 return res.status(400).json({
-                    message: 'Email nay da ton tai!',
+                    message: 'Email is existed!',
                 });
             } else if (existedNumberphone) {
                 return res.status(400).json({
-                    message: 'So dien thoai da ton tai!',
+                    message: 'Numberphone is existed!',
                 });
             }
             const salt = await bcrypt.genSalt(10);
@@ -76,16 +78,16 @@ const SiteController = {
             //create the new user account
             const newUser = await new AccountModel({
                 fullname: req.body.fullname,
-                numberphone: req.body.numberphone,
-                email: req.body.email,
+                Numberphone,
+                Email,
                 password: hashPassword,
                 isAdmin: req.body.isAdmin,
             });
             //save the new user account
             const user = await newUser.save();
-            res.status(200).json('Tao user thanh cong');
+            return res.status(200).json('Create user sucessfully');
         } catch {
-            res.status(500).json({ message: error.message });
+            return res.status(500).json({ message: error.message });
         }
     },
     //[POST] logout
