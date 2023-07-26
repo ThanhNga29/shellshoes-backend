@@ -10,7 +10,7 @@ userRouter.get(
 );
 userRouter.get(
     '/api/user/account/:_id',
-    tokenMiddleware.verifyTokenAndUser,
+    tokenMiddleware.verifyTokenAndUserAuthor,
     userController.getUser,
 );
 

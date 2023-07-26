@@ -32,6 +32,7 @@ const SiteController = {
                 return res.status(401).json({ message: 'Wrong password!' });
             }
             const accessToken = SiteController.getAccessToken(ExistingEmail);
+
             if (ExistingEmail && validPassword) {
                 //console.log(accessToken);
                 const { password, ...others } = ExistingEmail._doc;
@@ -78,15 +79,15 @@ const SiteController = {
             //create the new user account
             const newUser = await new AccountModel({
                 fullname: req.body.fullname,
-                Numberphone,
-                Email,
+                numberphone: req.body.numberphone,
+                email: req.body.email,
                 password: hashPassword,
                 isAdmin: req.body.isAdmin,
             });
             //save the new user account
             const user = await newUser.save();
             return res.status(200).json('Create user sucessfully');
-        } catch {
+        } catch (error) {
             return res.status(500).json({ message: error.message });
         }
     },

@@ -6,13 +6,25 @@ const ProductSchema = new Schema({
     name_product: {
         type: String,
     },
-    price_product: {
-        type: String,
+    oldPrice_product: {
+        type: Number,
+    },
+    newPrice_Product: {
+        type: Number,
+    },
+    size: {
+        type: [],
     },
     image: {
         type: String,
     },
+    quantity: {
+        type: Number,
+    },
     describe: {
+        type: String,
+    },
+    detail: {
         type: String,
     },
     id_category: {

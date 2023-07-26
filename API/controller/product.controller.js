@@ -19,7 +19,7 @@ const productController = {
         try {
             const product = await ProductModel.find().populate({
                 path: 'id_category',
-                select: 'name_product price_product image describe',
+                select: 'name_product oldPrice_product size image quantity describe detail',
             });
             res.status(200).json({
                 data: product,
@@ -57,9 +57,12 @@ const productController = {
             const id_category = await CategoryModel.findOne({ category: req.body.category });
             const newProduct = await new ProductModel({
                 name_product: req.body.name_product,
-                price_product: req.body.price_product,
+                oldPrice_product: req.body.price_product,
+                size: req.body.size,
                 image: req.file.path,
+                quantity: req.body.quantity,
                 describe: req.body.describe,
+                detail: req.body.detail,
                 id_category: id_category._id,
             });
             const product = await newProduct.save();
@@ -79,9 +82,12 @@ const productController = {
         try {
             const updatedProductData = {
                 name_product: req.body.name_product,
-                price_product: req.body.price_product,
+                oldPrice_product: req.body.price_product,
+                size: req.body.size,
                 image: req.file.path,
+                quantity: req.body.quantity,
                 describe: req.body.describe,
+                detail: req.body.detail,
             };
             const conditionalProductData = {
                 _id: req.params._id,
