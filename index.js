@@ -14,6 +14,7 @@ const userRouter = require('./API/router/user.router');
 const productRouter = require('./API/router/product.router');
 const categoryRouter = require('./API/router/category.router');
 const orderRouter = require('./API/router/order.router');
+const cartRouter = require('./API/router/cart.router');
 
 const AccountModel = require('./models/user.model');
 const ProductModel = require('./models/product.model');
@@ -22,6 +23,7 @@ const OrderModel = require('./models/order.model');
 const DetailOrderModel = require('./models/detail-order.model');
 const NoteModel = require('./models/note.model');
 const PaymentModel = require('./models/payment.model');
+const CartModel = require('./models/cart.model');
 
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -35,6 +37,7 @@ app.use(userRouter);
 app.use(productRouter);
 app.use(categoryRouter);
 app.use(orderRouter);
+app.use(cartRouter);
 //app.use('/api/account/', AccountRouter)
 app.listen(3000, () => {
     console.log(`Server started on port`);

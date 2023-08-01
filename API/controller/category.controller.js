@@ -14,6 +14,25 @@ const CategoryController = {
             });
         }
     },
+    //[GET] /api/category/:_id
+    getDetailCategory: async (req, res, next) => {
+        try {
+            const id_category = req.params._id;
+            const detailCategory = await CategoryModel.findOne({
+                _id: id_category,
+            });
+            if (!detailCategory) {
+                res.status(404).json({
+                    message: 'The category not found!',
+                });
+            }
+            res.status(200).json(detailCategory);
+        } catch (error) {
+            return res.status(500).json({
+                message: error.message,
+            });
+        }
+    },
     //[POST] /api/category/create
     createNewCategory: async (req, res, next) => {
         try {
@@ -27,7 +46,7 @@ const CategoryController = {
                 });
             }
             const newCategory = await new CategoryModel({
-                Category,
+                category: req.body.category,
                 image: req.file.path,
             });
             const category = await newCategory.save();

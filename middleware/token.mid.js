@@ -3,21 +3,6 @@ const AccountModel = require('../models/user.model');
 const path = require('path');
 
 const tokenMiddleware = {
-    //check login
-    // verifyToken: (req, res, next) => {
-    //     try {
-    //         const token = req.headers.token;
-    //         const accessToken = token.split(' ')[1];
-    //         const userId = jwt.verify(token, env.JWT_SECRET);
-    //         AccountModel.findOne({
-    //             _id: userId,
-    //         });
-    //         req.user = userId;
-    //         next();
-    //     } catch (err) {
-    //         res.status(500).json('token is not valid');
-    //     }
-    // },
     verifyToken: (req, res, next) => {
         const token = req.headers.token;
         if (token) {
@@ -27,6 +12,7 @@ const tokenMiddleware = {
                     res.status(403).json('Token is not valid!');
                 }
                 req.user = user;
+                //req.userId = user.userId;
                 next();
             });
         } else {
