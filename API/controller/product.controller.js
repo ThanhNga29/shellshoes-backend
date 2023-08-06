@@ -57,8 +57,9 @@ const productController = {
         try {
             const productDetail = await ProductModel.findById(req.params._id);
             if (!productDetail) {
-                res.status(500).json({
+                res.status(404).json({
                     sucess: false,
+                    message: 'The product not found!',
                 });
             }
             return res.status(200).json({
@@ -80,7 +81,7 @@ const productController = {
             const newProduct = await new ProductModel({
                 name_product: req.body.name_product,
                 oldPrice_product: req.body.oldPrice_product,
-                newPrice_Product: req.body.newPrice_Product,
+                newPrice_Product: req.body.newPrice_product,
                 size: req.body.size,
                 image: req.file.path,
                 quantity: req.body.quantity,
@@ -105,8 +106,8 @@ const productController = {
         try {
             const updatedProductData = {
                 name_product: req.body.name_product,
-                oldPrice_product: req.body.price_product,
-                newPrice_Product: req.body.newPrice_Product,
+                oldPrice_product: req.body.oldPrice_product,
+                newPrice_product: req.body.newPrice_product,
                 size: req.body.size,
                 image: req.file.path,
                 quantity: req.body.quantity,
@@ -123,13 +124,13 @@ const productController = {
                     new: true,
                 },
             );
+            return res.status(200).json({
+                message: 'Updated product sucessfully',
+                data: updatedProduct,
+            });
         } catch (error) {
             return res.status(500).json({ error: error.message });
         }
-        return res.status(200).json({
-            message: 'Updated product sucessfully',
-            data: updatedProduct,
-        });
     },
     //[DELETE] /api/product/delete/:_id
     deleteProduct: async (req, res, next) => {

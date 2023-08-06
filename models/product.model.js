@@ -5,11 +5,13 @@ const category = require('./category.model');
 const ProductSchema = new Schema({
     name_product: {
         type: String,
+        required: [true, 'Please include the product name'],
     },
     oldPrice_product: {
         type: Number,
+        required: [true, 'Please include te product Price'],
     },
-    newPrice_Product: {
+    newPrice_product: {
         type: Number,
     },
     size: {
