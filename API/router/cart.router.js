@@ -10,6 +10,10 @@ cartRouter.delete(
     cartController.deleteProductInCart,
 );
 cartRouter.get('/api/cart', tokenMiddleware.verifyTokenAndUser, cartController.getCartProduct);
-cartRouter.put('/api/cart/edit/:_id', tokenMiddleware.verifyTokenAndUser, cartController.editCart);
+cartRouter.put(
+    '/api/cart/edit/:_id',
+    tokenMiddleware.verifyTokenAndUserAuthor,
+    cartController.editCart,
+);
 
 module.exports = cartRouter;

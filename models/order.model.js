@@ -2,6 +2,13 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const OrderSchema = new Schema({
+    orderProducts: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'detail_order',
+            require: true,
+        },
+    ],
     adress: {
         type: String,
     },
@@ -19,7 +26,7 @@ const OrderSchema = new Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'users',
     },
-    id_note: {
+    id_order: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'note',
     },

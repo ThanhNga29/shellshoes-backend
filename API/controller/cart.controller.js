@@ -13,7 +13,7 @@ const cartController = {
             const product = await ProductModel.findOne({
                 _id: id_product,
             });
-            console.log(product);
+            //console.log(product);
             if (!product) {
                 return res.status(500).json('Product not found');
             }
@@ -36,7 +36,7 @@ const cartController = {
             const cartItemIndex = cart.detail_cart.findIndex(
                 (item) => item.id_product == id_product && item.size == size,
             );
-            console.log(cartItemIndex);
+            //console.log(cartItemIndex);
             if (cartItemIndex !== -1) {
                 cart.detail_cart[cartItemIndex].quantity =
                     cart.detail_cart[cartItemIndex].quantity + quantity;
@@ -52,13 +52,20 @@ const cartController = {
                 });
             }
             await cart.save();
+            const populateCart = await CartModel.findOne({ id_user: userId })
+                .populate({
+                    path: 'detail_cart.id_product',
+                    select: 'name_product image',
+                })
+                .select('detail_cart');
             return res.status(200).json({
                 sucess: true,
-                data: cart,
+                data: populateCart,
             });
         } catch (error) {
             return res.status(500).json({
                 message: 'Failed to add the product to the cart',
+                message: error.message,
             });
         }
     },
@@ -123,7 +130,11 @@ const cartController = {
             const userId = req.user.userId;
             const idProductCart = req.params._id;
             const newSize = req.body.size;
+            const newUnitPrice = req.body.unitPrice;
+            console.log(newUnitPrice);
             const newQuantity = req.body.quantity;
+            console.log(newQuantity);
+            const newprice = newQuantity * newUnitPrice;
             const cart = await CartModel.findOneAndUpdate(
                 {
                     id_user: userId,
@@ -133,12 +144,18 @@ const cartController = {
                     $set: {
                         'detail_cart.$.size': newSize,
                         'detail_cart.$.quantity': newQuantity,
+                        'detail_cart.$.unitPrice': newUnitPrice,
+                        'detail_cart.$.price': newprice,
                     },
                 },
                 {
                     new: true,
                 },
             )
+                .populate({
+                    path: 'detail_cart.id_product',
+                    select: 'name_product image',
+                })
                 .select('detail_cart')
                 .exec();
             if (!cart) {

@@ -35,5 +35,6 @@ productRouter.delete(
     tokenMiddleware.verifyTokenAndAdmin,
     productController.deleteProduct,
 );
+productRouter.post('/api/search', productController.searchProduct);
 
 module.exports = productRouter;

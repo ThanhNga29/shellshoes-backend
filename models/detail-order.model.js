@@ -16,10 +16,6 @@ const DetailOrderSchema = new Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'product',
     },
-    id_order: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'order',
-    },
 });
 
 const DetailOrderModel = mongoose.model('detail_order', DetailOrderSchema);

@@ -154,6 +154,32 @@ const productController = {
             });
         }
     },
+    // api/search
+    searchProduct: async (req, res, next) => {
+        try {
+            const search = req.body.search;
+            const product_data = await ProductModel.find({
+                name_product: { $regex: '.*' + search + '.*', $options: 'i' },
+            });
+            if (product_data.length > 0) {
+                res.status(200).json({
+                    sucess: true,
+                    msg: 'Products details',
+                    data: product_data,
+                });
+            } else {
+                res.status(200).json({
+                    sucess: true,
+                    msg: 'Products not found!',
+                });
+            }
+        } catch (error) {
+            res.status(500).json({
+                sucess: false,
+                message: error.message,
+            });
+        }
+    },
 };
 
 module.exports = productController;
