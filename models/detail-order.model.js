@@ -16,6 +16,12 @@ const DetailOrderSchema = new Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'product',
     },
+    unit_price: {
+        type: Number,
+    },
+    price: {
+        type: Number,
+    },
 });
 
 const DetailOrderModel = mongoose.model('detail_order', DetailOrderSchema);

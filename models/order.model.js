@@ -26,7 +26,7 @@ const OrderSchema = new Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'users',
     },
-    id_order: {
+    id_note: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'note',
     },

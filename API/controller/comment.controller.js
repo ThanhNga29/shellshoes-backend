@@ -48,6 +48,7 @@ const commentController = {
                     path: 'id_user',
                     select: 'fullname',
                 })
+                .sort({ timestamp: -1 })
                 .exec();
             const formattedComments = allcomment.map((comment) => {
                 return {

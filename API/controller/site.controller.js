@@ -38,8 +38,8 @@ const SiteController = {
                 const { password, ...others } = ExistingEmail._doc;
                 return res.status(200).json({
                     message: 'Logged in successfully',
-                    accessToken: accessToken,
-                    user: others,
+                    //accessToken: accessToken,
+                    user: { ...others, accessToken },
                     //
                 });
             } else {
