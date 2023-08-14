@@ -8,13 +8,16 @@ const commentController = {
     postComment: async (req, res, next) => {
         try {
             const idProduct = req.params._id;
+            //console.log(idProduct);
             const userId = req.user.userId;
-            const formattedTimestamp = moment().format('DD/MM/YYYY HH:mm');
+            //console.log(userId);
+            //const formattedTimestamp = moment().toDate();
+            //format('DD/MM/YYYY HH:mm');
             const data = await new CommentModel({
                 id_product: idProduct,
                 id_user: userId,
                 content: req.body.content,
-                timestamp: formattedTimestamp,
+                //timestamp: formattedTimestamp,
             });
 
             const saveData = await data.save();
@@ -23,7 +26,7 @@ const commentController = {
                 path: 'id_user',
                 select: 'fullname',
             });
-            //const formattedTimestamp = moment(data.timestamp).format('DD/MM/YYYY HH:mm');
+            const formattedTimestamp = moment(data.timestamp).format('DD/MM/YYYY HH:mm');
             return res.status(200).json({
                 message: 'Post comment sucessfully!',
                 data: {

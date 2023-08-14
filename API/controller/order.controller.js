@@ -19,6 +19,9 @@ const OrderController = {
                         select: 'name_product',
                     },
                 })
+                .populate({
+                    path: 'id_note',
+                })
                 .sort({ dateOrder: -1 });
             if (!orderList) {
                 res.status(500).send('Cannot get order');
@@ -60,6 +63,7 @@ const OrderController = {
                     message: 'The cart not found!',
                 });
             }
+
             const newNoteData = {
                 fullname: req.body.fullname,
                 phone: req.body.phone,
@@ -78,6 +82,25 @@ const OrderController = {
                 unit_price: item.unit_price,
                 price: item.price,
             }));
+
+            for (const orderProduct of orderProducts) {
+                const product = await ProductModel.findById(orderProduct.id_product);
+                if (!product) {
+                    return res.status(404).json({
+                        sucess: false,
+                        message: 'The product with ID ${orderProduct.id_product} not found!',
+                    });
+                }
+                if (product.quantity < orderProduct.quantity) {
+                    return res.status(400).json({
+                        sucess: false,
+                        message: 'Not enough stock available!',
+                    });
+                }
+                product.quantity -= orderProduct.quantity;
+                await product.save();
+            }
+
             const newDetailOrder = await DetailOrderModel.create(orderProducts);
             const newTotalPrice = orderProducts.reduce((total, item) => total + item.price, 0);
             const order = new OrderModel({
