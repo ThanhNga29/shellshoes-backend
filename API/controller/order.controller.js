@@ -16,7 +16,7 @@ const OrderController = {
                     path: 'orderProducts',
                     populate: {
                         path: 'id_product',
-                        select: 'name_product',
+                        select: 'name_product image',
                     },
                 })
                 .populate({
@@ -131,24 +131,46 @@ const OrderController = {
     deleteOrder: async (req, res, next) => {
         try {
             const idOrder = req.params._id;
-            const deleteOrder = await OrderModel.findByIdAndRemove(idOrder);
-            if (deleteOrder.status !== 'pending') {
-                return res.status(400).json({
-                    sucess: false,
-                    message: 'Can not delete order!',
-                });
-            }
-            if (deleteOrder) {
-                return res.status(200).json({
-                    sucess: true,
-                    message: 'The order is deleted!',
-                });
-            } else {
+            //const deleteOrder = await OrderModel.findByIdAndRemove(idOrder);
+            const deleteOrder = await OrderModel.findOne({ _id: idOrder });
+            //     .populate({
+            //     path: 'orderProducts._id'
+            // });
+            if (!deleteOrder) {
                 return res.status(404).json({
                     sucess: false,
                     message: 'The order not found!',
                 });
             }
+            if (deleteOrder.status !== 'Pending') {
+                return res.status(400).json({
+                    sucess: false,
+                    message: 'Can not delete order!',
+                });
+            }
+            if (deleteOrder.id_note) {
+                await NoteModel.findByIdAndDelete(deleteOrder.id_note);
+            }
+            for (const orderProduct of deleteOrder.orderProducts) {
+                //console.log(orderProduct);
+                const product = await DetailOrderModel.findOne({ _id: orderProduct._id });
+                //console.log(product);
+                const findProduct = await ProductModel.findOne({ _id: product.id_product });
+                //console.log(findProduct);
+                if (findProduct) {
+                    //console.log(product.quantity);
+                    findProduct.quantity += product.quantity;
+                    await findProduct.save();
+                    //console.log(findProduct);
+                }
+                await DetailOrderModel.findByIdAndDelete(orderProduct._id);
+            }
+            await deleteOrder.deleteOne({ _id: idOrder });
+
+            return res.status(200).json({
+                sucess: true,
+                message: 'The order is deleted!',
+            });
         } catch (error) {
             return res.status(500).json({
                 sucess: false,
@@ -192,7 +214,7 @@ const OrderController = {
                     path: 'orderProducts',
                     populate: {
                         path: 'id_product',
-                        select: 'name_product',
+                        select: 'name_product image',
                     },
                 })
                 .sort({ dateOrder: -1 });

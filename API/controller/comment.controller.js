@@ -45,13 +45,13 @@ const commentController = {
     allComment: async (req, res, next) => {
         try {
             const id_product = req.params._id;
-            const formattedTimestamp = moment().format('DD/MM/YYYY HH:mm');
+            //const formattedTimestamp = moment().format('DD/MM/YYYY HH:mm');
             const allcomment = await CommentModel.find({ id_product: id_product })
                 .populate({
                     path: 'id_user',
                     select: 'fullname',
                 })
-                .sort({ timestamp: -1 })
+                .sort({ timestamp: 1 })
                 .exec();
             const formattedComments = allcomment.map((comment) => {
                 return {
