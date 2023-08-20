@@ -45,7 +45,7 @@ const OrderController = {
     },
     createOrderProduct: async (req, res, next) => {
         try {
-            console.log(req.body);
+            //console.log(req.body);
             const userId = req.user.userId;
             const quantity = req.body.quantity;
             const unit_price = req.body.unit_price;
@@ -75,6 +75,10 @@ const OrderController = {
             //     });
             // }
             const newNote = await NoteModel.create(newNoteData);
+            const newPayMent = {
+                payName: req.body.payName,
+            };
+            const newPay = await PaymentModel.create(newPayMent);
             const orderProducts = req.body.orderProducts.map((item) => ({
                 quantity: item.quantity,
                 size: item.size,
@@ -111,6 +115,7 @@ const OrderController = {
                 totalPrice: newTotalPrice,
                 adress: req.body.address,
                 id_note: newNote._id,
+                id_payment: newPay._id,
             });
             const savedOrder = await order.save();
             const formattedTimestamp = moment().format('DD/MM/YYYY HH:mm');
@@ -182,7 +187,7 @@ const OrderController = {
     updateOrder: async (req, res, next) => {
         try {
             const updateOrder = await OrderModel.findByIdAndUpdate(
-                req.parmas._id,
+                req.params._id,
                 {
                     status: req.body.status,
                 },
@@ -215,6 +220,10 @@ const OrderController = {
                     populate: {
                         path: 'id_product',
                         select: 'name_product image',
+                        populate: {
+                            path: 'id_category',
+                            select: 'category',
+                        },
                     },
                 })
                 .sort({ dateOrder: -1 });
@@ -227,6 +236,48 @@ const OrderController = {
             return res.status(200).json({
                 sucess: true,
                 data: formattedAllOrder,
+            });
+        } catch (error) {
+            return res.status(500).json({
+                sucess: false,
+                message: error.message,
+            });
+        }
+    },
+    // api/order/detail/:_id
+    detailOrder: async (req, res, next) => {
+        try {
+            const idOrder = req.params._id;
+            //console.log(idOrder);
+            const findDetail = await OrderModel.find({ _id: idOrder })
+                .populate({
+                    path: 'orderProducts',
+                    populate: {
+                        path: 'id_product',
+                        select: 'name_product image',
+                    },
+                })
+                .exec();
+            const format = (findDetail) => {
+                return {
+                    ...findDetail._doc,
+                    dateOrder: moment(findDetail.dateOrder).format('DD/MM/YYYY HH:mm'),
+                };
+            };
+            //const formattedTimestamp = moment(findDetail.dateOrder).format('DD/MM/YYYY HH:mm');
+            if (!findDetail) {
+                return res.status(404).json({
+                    sucess: false,
+                    message: 'The order not found!',
+                });
+            }
+            return res.status(200).json({
+                sucess: true,
+                // data: {
+                //     ...findDetail._doc, // Convert Mongoose document to plain object
+                //     dateOrder: moment(findDetail.dateOrder).format('DD/MM/YYYY HH:mm'),
+                // },
+                data: format,
             });
         } catch (error) {
             return res.status(500).json({

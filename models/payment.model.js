@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const PaymentSchema = new Schema({
-    payname: {
+    payName: {
         type: String,
     },
 });

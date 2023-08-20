@@ -19,4 +19,14 @@ orderRouter.delete(
     orderController.deleteOrder,
 );
 orderRouter.get('/api/order/all', tokenMiddleware.verifyTokenAndAdmin, orderController.getAllOrder);
+orderRouter.put(
+    '/api/order/edit/:_id',
+    tokenMiddleware.verifyTokenAndAdmin,
+    orderController.updateOrder,
+);
+orderRouter.get(
+    '/api/order/detail/:_id',
+    tokenMiddleware.verifyTokenAndUser,
+    orderController.detailOrder,
+);
 module.exports = orderRouter;
