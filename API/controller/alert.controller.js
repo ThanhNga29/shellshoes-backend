@@ -115,6 +115,27 @@ const alertController = {
             });
         }
     },
+    // api/alert/read/:_id
+    readAlert: async (req, res, next) => {
+        try {
+            const idAlert = { _id: req.params._id };
+            const isRead = {
+                read: true,
+            };
+            const findAlert = await AlertModel.findOneAndUpdate(idAlert, isRead, {
+                new: true,
+            });
+            return res.status(200).json({
+                sucess: true,
+                data: findAlert,
+            });
+        } catch (error) {
+            return res.status(500).json({
+                sucess: false,
+                message: error.message,
+            });
+        }
+    },
 };
 
 module.exports = alertController;

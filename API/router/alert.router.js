@@ -18,5 +18,10 @@ alertRouter.post(
     tokenMiddleware.verifyTokenAndUserAuthor,
     alertController.alertDelivered,
 );
+alertRouter.put(
+    '/api/alert/read/:_id',
+    tokenMiddleware.verifyTokenAndAdmin,
+    alertController.readAlert,
+);
 alertRouter.get('/api/alert/all', tokenMiddleware.verifyTokenAndUser, alertController.alertAll);
 module.exports = alertRouter;

@@ -226,6 +226,9 @@ const OrderController = {
                         },
                     },
                 })
+                .populate({
+                    path: 'id_note',
+                })
                 .sort({ dateOrder: -1 });
             const formattedAllOrder = allOrder.map((order) => {
                 return {
