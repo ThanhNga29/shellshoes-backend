@@ -26,7 +26,7 @@ productRouter.post(
 );
 productRouter.put(
     '/api/product/edit/:_id',
-    //tokenMiddleware.verifyTokenAndAdmin,
+    tokenMiddleware.verifyTokenAndAdmin,
     uploadMiddleware.single('image'),
     productController.updateProduct,
 );

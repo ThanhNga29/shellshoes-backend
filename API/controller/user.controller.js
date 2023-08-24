@@ -50,13 +50,13 @@ const userController = {
             const updatedUser = await AccountModel.findOneAndUpdate(conditionalData, updatedData, {
                 new: true,
             });
+            return res.status(200).json({
+                message: 'Updated User',
+                data: updatedUser,
+            });
         } catch {
             return res.status(500).send(error);
         }
-        return res.status(200).json({
-            message: 'Updated User',
-            data: updatedUser,
-        });
     },
     //[DELETE] /api/user/delete/:_id
     deleteUser: async (req, res, next) => {
