@@ -260,13 +260,20 @@ const OrderController = {
                         select: 'name_product image',
                     },
                 })
+                .populate({
+                    path: 'id_note',
+                })
+                .populate({
+                    path: 'id_payment',
+                })
                 .exec();
-            const format = (findDetail) => {
+            //console.log(findDetail);
+            const format = findDetail.map((detailOrder) => {
                 return {
-                    ...findDetail._doc,
-                    dateOrder: moment(findDetail.dateOrder).format('DD/MM/YYYY HH:mm'),
+                    ...detailOrder._doc,
+                    dateOrder: moment(detailOrder.dateOrder).format('DD/MM/YYYY HH:mm'),
                 };
-            };
+            });
             //const formattedTimestamp = moment(findDetail.dateOrder).format('DD/MM/YYYY HH:mm');
             if (!findDetail) {
                 return res.status(404).json({

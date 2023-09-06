@@ -145,6 +145,27 @@ const commentController = {
             });
         }
     },
+    // api/comment/detail/:_id
+    detailComment: async (req, res, next) => {
+        try {
+            const id_comment = req.params._id;
+            const findComment = await CommentModel.findById(id_comment);
+            if (!findComment) {
+                return res.status(404).json({
+                    sucess: false,
+                    message: 'The comment not found!',
+                });
+            }
+            res.status(200).json({
+                success: findComment,
+            });
+        } catch (error) {
+            res.status(500).json({
+                sucess: false,
+                message: error.message,
+            });
+        }
+    },
 };
 
 module.exports = commentController;
