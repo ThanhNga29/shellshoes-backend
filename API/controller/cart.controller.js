@@ -18,7 +18,7 @@ const cartController = {
                 return res.status(500).json('Product not found');
             }
             //console.log(product);
-            const unitPrice = product.newPrice_product;
+            const unitPrice = product.price_product;
             const price = unitPrice * quantity;
             const userId = req.user.userId;
             //console.log(unitPrice, price, userId);
@@ -101,16 +101,40 @@ const cartController = {
         try {
             const userId = req.user.userId;
             //console.log(userId);
-            const cart = await CartModel.find({ id_user: userId })
+            const cart = await CartModel.findOne({ id_user: userId })
+                //console.log('detailcart:', cart);
                 .populate({
                     path: 'detail_cart.id_product',
-                    select: 'name_product image',
+                    select: 'name_product image salePrice price_product',
                 })
                 .exec();
+            console.log(cart.detail_cart);
             if (!cart) {
                 return res.status(404).json({
                     sucess: false,
                     message: 'The cart not found',
+                });
+            }
+            for (const product of cart.detail_cart) {
+                console.log('product:', product);
+                if (product.id_product.salePrice !== null) {
+                    product.unitPrice = product.id_product.salePrice;
+                    console.log('product.unitPrice1:', product.unitPrice);
+                } else {
+                    product.unitPrice = product.id_product.price_product;
+                    console.log('product.unitPrice2:', product.unitPrice);
+                }
+                product.price = product.quantity * product.unitPrice;
+            }
+            console.log('cart:', cart);
+            try {
+                const updatedCart = await cart.save();
+                console.log('Updated cart:', updatedCart);
+            } catch (error) {
+                console.error('Error updating cart:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to update cart!',
                 });
             }
             return res.status(200).json({
@@ -131,9 +155,9 @@ const cartController = {
             const idProductCart = req.params._id;
             const newSize = req.body.size;
             const newUnitPrice = req.body.unitPrice;
-            console.log(newUnitPrice);
+            //console.log(newUnitPrice);
             const newQuantity = req.body.quantity;
-            console.log(newQuantity);
+            //console.log(newQuantity);
             const newprice = newQuantity * newUnitPrice;
             const cart = await CartModel.findOneAndUpdate(
                 {

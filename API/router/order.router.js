@@ -15,7 +15,7 @@ orderRouter.get(
 );
 orderRouter.delete(
     '/api/order/delete/:_id',
-    tokenMiddleware.verifyTokenAndUserAuthor,
+    //tokenMiddleware.verifyTokenAndUserAuthor,
     orderController.deleteOrder,
 );
 orderRouter.get('/api/order/all', tokenMiddleware.verifyTokenAndAdmin, orderController.getAllOrder);

@@ -2,26 +2,32 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const category = require('./category.model');
 
+const SizeProductSchema = new Schema({
+    size: {
+        type: Number,
+        required: [true, 'Please include the size'],
+    },
+    quantity: {
+        type: Number,
+        required: [true, 'Please include the quantity for this size'],
+    },
+});
+
 const ProductSchema = new Schema({
     name_product: {
         type: String,
         required: [true, 'Please include the product name'],
     },
-    oldPrice_product: {
+    // oldPrice_product: {
+    //     type: Number,
+    //     required: [true, 'Please include te product Price'],
+    // },
+    price_product: {
         type: Number,
-        required: [true, 'Please include te product Price'],
     },
-    newPrice_product: {
-        type: Number,
-    },
-    size: {
-        type: [],
-    },
+    sizes: [SizeProductSchema],
     image: {
-        type: String,
-    },
-    quantity: {
-        type: Number,
+        type: Array,
     },
     describe: {
         type: String,
@@ -32,6 +38,10 @@ const ProductSchema = new Schema({
     id_category: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'category',
+    },
+    salePrice: {
+        type: Number,
+        default: null,
     },
 });
 

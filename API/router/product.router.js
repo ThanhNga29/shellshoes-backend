@@ -16,12 +16,12 @@ productRouter.get(
 );
 productRouter.get(
     '/api/allproduct',
-    tokenMiddleware.verifyTokenAndAdmin,
+    //tokenMiddleware.verifyTokenAndAdmin,
     productController.allProduct,
 );
 productRouter.post(
     '/api/newproduct',
-    uploadMiddleware.single('image'),
+    uploadMiddleware.array('image'),
     productController.createNewproduct,
 );
 productRouter.put(
@@ -36,5 +36,6 @@ productRouter.delete(
     productController.deleteProduct,
 );
 productRouter.post('/api/search', productController.searchProduct);
+productRouter.get('/api/checkstock', productController.checkStock);
 
 module.exports = productRouter;
