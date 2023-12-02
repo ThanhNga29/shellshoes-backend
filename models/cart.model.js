@@ -17,12 +17,12 @@ const CartSchema = new Schema({
                 type: Number,
                 required: true,
             },
-            unitPrice: {
-                type: Number,
-            },
-            price: {
-                type: Number,
-            },
+            // unitPrice: {
+            //     type: Number,
+            // },
+            // price: {
+            //     type: Number,
+            // },
         },
     ],
     id_user: {

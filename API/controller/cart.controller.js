@@ -2,6 +2,7 @@ const CartModel = require('../../models/cart.model');
 const ProductModel = require('../../models/product.model');
 const AccountModel = require('../../models/user.model');
 const SiteController = require('./site.controller');
+const { checkSaleOneProduct } = require('./sale.controller');
 
 const cartController = {
     // api/add_to_cart
@@ -18,8 +19,8 @@ const cartController = {
                 return res.status(500).json('Product not found');
             }
             //console.log(product);
-            const unitPrice = product.price_product;
-            const price = unitPrice * quantity;
+            //const unitPrice = product.price_product;
+            //const price = unitPrice * quantity;
             const userId = req.user.userId;
             //console.log(unitPrice, price, userId);
             let cart = await CartModel.findOne({ id_user: userId });
@@ -40,15 +41,15 @@ const cartController = {
             if (cartItemIndex !== -1) {
                 cart.detail_cart[cartItemIndex].quantity =
                     cart.detail_cart[cartItemIndex].quantity + quantity;
-                cart.detail_cart[cartItemIndex].price =
-                    cart.detail_cart[cartItemIndex].price + price;
+                // cart.detail_cart[cartItemIndex].price =
+                //     cart.detail_cart[cartItemIndex].price + price;
             } else {
                 cart.detail_cart.push({
                     id_product: id_product,
                     quantity: quantity,
                     size: size,
-                    unitPrice: unitPrice,
-                    price: price,
+                    // unitPrice: unitPrice,
+                    // price: price,
                 });
             }
             await cart.save();
@@ -96,50 +97,54 @@ const cartController = {
             });
         }
     },
-    // api/cart
-    getCartProduct: async (req, res, next) => {
+    //api/cart
+    getDetailCart1: async (productId, userId) => {
+        const cartDetail = await CartModel.findOne(
+            { id_user: userId, 'detail_cart.id_product': productId },
+            { 'detail_cart.$': 1 },
+        );
+        return cartDetail.detail_cart[0];
+    },
+
+    getCartProduct1: async (req, res, next) => {
         try {
             const userId = req.user.userId;
-            //console.log(userId);
-            const cart = await CartModel.findOne({ id_user: userId })
-                //console.log('detailcart:', cart);
-                .populate({
-                    path: 'detail_cart.id_product',
-                    select: 'name_product image salePrice price_product',
-                })
-                .exec();
-            console.log(cart.detail_cart);
+            //console.log('userId', userId);
+            const cart = await CartModel.findOne({ id_user: userId });
+            //console.log('cart:', cart);
             if (!cart) {
                 return res.status(404).json({
                     sucess: false,
                     message: 'The cart not found',
                 });
             }
-            for (const product of cart.detail_cart) {
-                console.log('product:', product);
-                if (product.id_product.salePrice !== null) {
-                    product.unitPrice = product.id_product.salePrice;
-                    console.log('product.unitPrice1:', product.unitPrice);
+            const findIdProduct = cart.detail_cart.map((product) => product.id_product.toString());
+            console.log('findIdProduct:', findIdProduct);
+            const resultCheckSaleProduct = [];
+            for (const checkSale of findIdProduct) {
+                //console.log('checkSale:', checkSale);
+                const doneCheckSaleOne = await checkSaleOneProduct(checkSale);
+                console.log('doneCheckSaleOne:', doneCheckSaleOne);
+                const detailCart = await cartController.getDetailCart(checkSale, userId);
+                //console.log('detailCart:', detailCart);
+                const result = { ...doneCheckSaleOne._doc };
+                result.quantity = detailCart.quantity;
+                result.size = detailCart.size;
+                //console.log('result0:', result);
+                if (doneCheckSaleOne.salePrice) {
+                    //console.log(123);
+                    result.unitPrice = doneCheckSaleOne.salePrice;
+                    result.price = doneCheckSaleOne.salePrice * detailCart.quantity;
                 } else {
-                    product.unitPrice = product.id_product.price_product;
-                    console.log('product.unitPrice2:', product.unitPrice);
+                    result.unitPrice = doneCheckSaleOne.price_product;
+                    result.price = doneCheckSaleOne.price_product * detailCart.quantity;
                 }
-                product.price = product.quantity * product.unitPrice;
+                resultCheckSaleProduct.push(result);
             }
-            console.log('cart:', cart);
-            try {
-                const updatedCart = await cart.save();
-                console.log('Updated cart:', updatedCart);
-            } catch (error) {
-                console.error('Error updating cart:', error);
-                return res.status(500).json({
-                    success: false,
-                    message: 'Failed to update cart!',
-                });
-            }
+            //console.log('doneCheck:', resultCheckSaleProduct);
             return res.status(200).json({
                 success: true,
-                data: cart,
+                data: resultCheckSaleProduct,
             });
         } catch (error) {
             res.status(500).json({
@@ -148,6 +153,69 @@ const cartController = {
             });
         }
     },
+    getDetailCart: async (productId, userId, size) => {
+        const cartDetail = await CartModel.findOne(
+            { id_user: userId, 'detail_cart.id_product': productId, 'detail_cart.size': size },
+            { 'detail_cart.$': 1 },
+        );
+        return cartDetail ? cartDetail.detail_cart[0] : null;
+    },
+    getCartProduct: async (req, res, next) => {
+        try {
+            const userId = req.user.userId;
+            const cart = await CartModel.findOne({ id_user: userId });
+
+            if (!cart) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'The cart not found',
+                });
+            }
+            //console.log(cart.detail_cart);
+            const resultCheckSaleProduct = [];
+            console.log('cartDetailCart:', cart.detail_cart);
+            for (const cartItem of cart.detail_cart) {
+                console.log('cartItem:', cartItem);
+                const doneCheckSaleOne = await checkSaleOneProduct(cartItem.id_product);
+                const detailCart = await cartController.getDetailCart(
+                    cartItem.id_product,
+                    userId,
+                    cartItem.size,
+                );
+
+                const result = {
+                    ...doneCheckSaleOne._doc,
+                    _id: cartItem._id,
+                    id_product: cartItem.id_product,
+                };
+                //console.log('result:', result);
+
+                result.quantity = detailCart.quantity;
+                result.size = detailCart.size;
+
+                if (doneCheckSaleOne.salePrice) {
+                    result.unitPrice = doneCheckSaleOne.salePrice;
+                    result.price = doneCheckSaleOne.salePrice * detailCart.quantity;
+                } else {
+                    result.unitPrice = doneCheckSaleOne.price_product;
+                    result.price = doneCheckSaleOne.price_product * detailCart.quantity;
+                }
+
+                resultCheckSaleProduct.push(result);
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: resultCheckSaleProduct,
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to get cart product!',
+            });
+        }
+    },
+
     // api/cart/edit/:_id
     editCart: async (req, res, next) => {
         try {

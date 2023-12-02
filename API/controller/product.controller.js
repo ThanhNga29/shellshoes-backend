@@ -1,8 +1,14 @@
+const momentTimeZone = require('moment-timezone');
+const moment = require('moment');
 const ProductModel = require('../../models/product.model');
+const SaleModel = require('../../models/sale.model');
 const CategoryModel = require('../../models/category.model');
 const cloudinary = require('cloudinary').v2;
-const { checkSaleProduct } = require('./sale.controller');
-
+// const { checkSaleProduct, checkSaleOneProduct } = require('./sale.controller');
+// const { checkSaleProduct1 } = require('./sale.controller');
+const { checkSaleOneProduct, checkSaleProduct } = require('./sale.controller');
+const { detailProductSale } = require('./sale.controller');
+const { getCurrentSaleProduct } = require('./sale.controller');
 const productController = {
     // api/filterproduct
     filterProduct: async (req, res) => {
@@ -35,72 +41,39 @@ const productController = {
         }
     },
     //[GET] api/allproduct
-    allProduct: async (req, res) => {
+    allProduct: async (req, res, next) => {
         try {
-            const product = await ProductModel.find();
-            console.log(product);
-            //     .populate({
-            //     path: 'id_category',
-            //     select: 'name_product price_product size image quantity describe detail',
-            // });
-            //console.log(product);
-            // return res.status(200).json({
-            //     data: product,
-            //     sucess: true,
-            // });
-            const data = await checkSaleProduct(product);
-            for (const product of data) {
-                if (product.matchingSale) {
-                    product.salePrice = product.matchingSale.saleProducts[0].salePrice;
-                }
-                try {
-                    const updatedProduct = await ProductModel.findByIdAndUpdate(
-                        product._id,
-                        { salePrice: product.salePrice },
-                        { new: true },
-                    );
-                    if (updatedProduct) {
-                        console.log(
-                            `SalePrice of product '${updatedProduct.name_product}' updated to ${updatedProduct.salePrice}`,
-                        );
-                    }
-                } catch (error) {
-                    console.error(
-                        `Error updating product '${product.name_product}': ${error.message}`,
-                    );
-                }
-            }
-            return res.status(200).json({
-                sucess: true,
-                data: data,
+            const products = await ProductModel.find().populate({
+                path: 'id_category',
             });
-        } catch (err) {
-            //console.log(err);
-            return res.status(500).json({
-                sucess: false,
-                message: err.message,
+            const currentDate = moment();
+            const checkProductSaleInTime = await SaleModel.find();
+            const currentSales = checkProductSaleInTime.filter((product) => {
+                const startSale = moment(product.startSale).tz('Asia/Bangkok');
+                const endSale = moment(product.endSale).tz('Asia/Bangkok');
+                return currentDate.isBetween(startSale, endSale);
             });
-        }
-    },
-    // api/product/detail/:_id
-    productDetail: async (req, res) => {
-        try {
-            const productDetail = await ProductModel.findById(req.params._id);
-            if (!productDetail) {
-                res.status(404).json({
-                    sucess: false,
-                    message: 'The product not found!',
+
+            const productsWithSaleInfo = JSON.parse(JSON.stringify(products));
+
+            productsWithSaleInfo.forEach((product) => {
+                const saleInfo = currentSales.find((sale) => {
+                    const saleProduct = sale.saleProducts.find(
+                        (sp) => sp.id_product.toString() === product._id.toString(),
+                    );
+                    return saleProduct !== undefined;
                 });
-            }
-            return res.status(200).json({
-                sucess: true,
-                data: productDetail,
+
+                if (saleInfo) {
+                    const saleProduct = saleInfo.saleProducts.find(
+                        (sp) => sp.id_product.toString() === product._id.toString(),
+                    );
+                    product.salePrice = saleProduct.salePrice;
+                }
             });
+            res.json(productsWithSaleInfo);
         } catch (error) {
-            res.status(500).json({
-                sucess: false,
-                message: error.message,
-            });
+            res.status(500).json({ error: error.message });
         }
     },
     //[POST] /api/newproduct
@@ -109,6 +82,7 @@ const productController = {
             //console.log(filedata);
             //console.log(req.body.sizes);
             const id_category = await CategoryModel.findOne({ category: req.body.category });
+            //const size = req.body.sizes.map((size) => JSON.parse(size))
             const sizes = JSON.parse(req.body.sizes);
             //console.log(sizes);
             const newSizeProduct = sizes.map((size) => ({
@@ -143,21 +117,28 @@ const productController = {
     updateProduct: async (req, res, next) => {
         try {
             const sizes = JSON.parse(req.body.sizes);
+            const newSizeProduct = sizes.map((size) => ({
+                size: size.size,
+                quantity: size.quantity,
+            }));
+            console.log(newSizeProduct);
             //console.log(sizes);
             const updatedProductData = {
                 name_product: req.body.name_product,
                 //oldPrice_product: req.body.oldPrice_product,
                 price_product: req.body.price_product,
+                sizes: newSizeProduct,
                 //size: req.body.size,
                 //image: req.file.path,
                 //quantity: req.body.quantity,
+                category: req.body.category,
                 describe: req.body.describe,
                 detail: req.body.detail,
             };
-            if (req.file) {
-                updatedCategoryData.image = req.file.path;
+            if (req.files) {
+                updatedProductData.image = req.files.path;
             }
-            updatedProductData.sizes = sizes;
+            //updatedProductData.sizes = sizes;
             const conditionalProductData = {
                 _id: req.params._id,
             };
@@ -201,18 +182,18 @@ const productController = {
     // api/search
     searchProduct: async (req, res, next) => {
         try {
-            const search = req.body.search;
+            const search = req.query.search;
             const product_data = await ProductModel.find({
                 name_product: { $regex: '.*' + search + '.*', $options: 'i' },
             });
             if (product_data.length > 0) {
-                res.status(200).json({
+                return res.status(200).json({
                     sucess: true,
                     msg: 'Products details',
                     data: product_data,
                 });
             } else {
-                res.status(200).json({
+                return res.status(200).json({
                     sucess: true,
                     msg: 'Products not found!',
                 });
@@ -224,45 +205,6 @@ const productController = {
             });
         }
     },
-
-    // checkStock: async (req, res) => {
-    //     try {
-    //         const productId = req.body.id_product;
-    //         const size = req.body.size;
-    //         const quantity = req.body.quantity;
-    //         //console.log(productId, size, quantity);
-    //         const findProduct = await ProductModel.findById(productId);
-    //         if (!findProduct) {
-    //             return res.status(404).json({
-    //                 sucess: false,
-    //                 message: `The product with ID ${productId} not found!`,
-    //             });
-    //             const sizeObject = findProduct.sizes.find((s) => s.size === size);
-    //         }
-    //         if (!sizeObject) {
-    //             return res.status(400).json({
-    //                 sucess: false,
-    //                 message: `Size ${size} not available for product with ID ${productId}`,
-    //             });
-    //         }
-    //         const availableQuantity = sizeObject.quantity;
-    //         if (quantity > availableQuantity) {
-    //             return res.status(400).json({
-    //                 sucess: false,
-    //                 message: `Not enough stock for product with ID ${productId} and size ${size}`,
-    //             });
-    //         }
-    //         return res.status(200).json({
-    //             sucess: true,
-    //             message: `Stock is available for product with ID ${productId} and size ${size}`,
-    //         });
-    //     } catch (error) {
-    //         res.status(500).json({
-    //             sucess: false,
-    //             message: error.message,
-    //         });
-    //     }
-    // },
     checkStock: async (productId, size, quantity, orderProduct) => {
         const findProduct = await ProductModel.findOne({ _id: productId });
         if (!findProduct) {
@@ -289,7 +231,7 @@ const productController = {
             return {
                 sucess: false,
                 status: 400,
-                message: `Not enough stock for product with ID ${productId} and size ${size}`,
+                message: `Not enough stock for product with ID ${productId} with size ${size}`,
             };
         }
 
@@ -300,8 +242,72 @@ const productController = {
             data: orderProduct,
         };
     },
+    productHomePage: async (req, res, next) => {
+        try {
+            let perPage = 2;
+            let page = req.params.page || 1;
+            const products = await ProductModel.find()
+                .skip(perPage * page - perPage)
+                .limit(perPage)
+                .exec();
+            const count = await ProductModel.countDocuments();
+            return res.status(200).json({
+                sucess: true,
+                data: { products, current: page, pages: Math.ceil(count / perPage) },
+            });
+        } catch (error) {
+            return res.status(500).json({
+                sucess: false,
+                message: error.message,
+            });
+        }
+    },
+    productPagination: async (req, res, next) => {
+        try {
+            let perPage = 2;
+            let page = req.params.page;
+            const products = await ProductModel.find()
+                .skip(perPage * page - perPage)
+                .limit(perPage)
+                .exec();
+            const count = await ProductModel.countDocuments();
+            res.status(200).json({
+                sucess: true,
+                data: { products, current: page },
+            });
+        } catch (error) {
+            return res.status(500).json({
+                sucess: false,
+                message: error.message,
+            });
+        }
+    },
+    detailProduct: async (req, res, next) => {
+        try {
+            const idProduct = req.params._id;
+            const findProduct = await ProductModel.findById(idProduct);
+            if (!findProduct) {
+                return res.status(404).json({
+                    sucess: false,
+                    message: 'The Product not found!',
+                });
+            }
+            const checkProductIsInSale = await getCurrentSaleProduct(idProduct);
+            const result = {
+                product: findProduct,
+                productIsInSale: checkProductIsInSale,
+            };
+            return res.status(200).json({
+                sucess: true,
+                data: result,
+            });
+        } catch (error) {
+            return res.status(500).json({
+                sucess: false,
+                message: error.message,
+            });
+        }
+    },
 };
-
-//console.log('checkstock', productController.checkStock('65119c48fc7f41f92911db94', '11', 10));
 
 module.exports = productController;

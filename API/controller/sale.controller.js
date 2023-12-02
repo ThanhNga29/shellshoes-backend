@@ -1,21 +1,45 @@
 const moment = require('moment');
+const momentTimeZone = require('moment-timezone');
+// moment.tz.setDefault('Asia/Bangkok');
+
 const SaleModel = require('../../models/sale.model');
 const ProductModel = require('../../models/product.model');
 
 const SaleController = {
     createSale: async (req, res, next) => {
         try {
-            const startSale = moment.utc(req.body.startSale, 'DD-MM-YYYY HH:mm').toDate();
-            const endSale = moment.utc(req.body.endSale, 'DD-MM-YYYY HH:mm').toDate();
+            const startSale = moment(req.body.startSale, 'DD-MM-YYYY HH:mm', 'Asia/Bangkok');
+            const endSale = moment(req.body.endSale, 'DD-MM-YYYY HH:mm', 'Asia/Bangkok');
             const data = req.body;
             //console.log(data);
             const saleProduct = data.saleProducts.map((product) => ({
                 salePrice: product.price - (product.price * product.promotion) / 100,
                 promotion: product.promotion,
                 id_product: product.id_product,
+                limit: product.limit,
                 //id_sale: product.id_product,
             }));
-
+            const findProduct = await ProductModel.find();
+            for (const checkLimit of data.saleProducts) {
+                //console.log('checkLimit:', checkLimit);
+                const checkLimitProduct = findProduct.find(
+                    (product) => checkLimit.id_product.toString() === product._id.toString(),
+                );
+                //console.log('checkLimitProduct:', checkLimitProduct);
+                const totalQuantity = checkLimitProduct.sizes.reduce(
+                    (sum, size) => sum + size.quantity,
+                    0,
+                );
+                // console.log('totalQuantity:', totalQuantity);
+                // console.log('checkLimitKQ:', checkLimit.limit);
+                if (checkLimit.limit > totalQuantity) {
+                    return res.status(400).json({
+                        sucess: false,
+                        message: `Limit exceeds total quantity for product with ID ${checkLimit.id_product}`,
+                    });
+                }
+            }
+            //console.log('saleProducts:', saleProduct);
             //console.log(salePrice);
             const newSale = await new SaleModel({
                 saleProducts: saleProduct,
@@ -37,27 +61,37 @@ const SaleController = {
     updateSale: async (req, res, next) => {
         try {
             const saleID = req.params._id;
-            if (!saleID) {
+            const findSaleId = await SaleModel.findById({ _id: saleID });
+            if (!findSaleId) {
                 return res.status(404).json({
                     sucess: false,
                     message: 'The ID sale not found!',
                 });
             }
-            const updatedData = req.body;
-            const now = new Date();
-            const checkUpdatedSale = moment(now).isBetween(
-                moment(updatedData.startSale),
-                moment(updatedData.endSale),
-            );
-            if (checkUpdatedSale) {
+            const now = moment();
+            //console.log('now:', now);
+            const startSale = moment(findSaleId.startSale).tz('Asia/Bangkok');
+            console.log('startSale:', startSale);
+            const endSale = moment(findSaleId.endSale).tz('Asia/Bangkok');
+            console.log('endSale:', endSale);
+            if (now.isBetween(startSale, endSale)) {
                 return res.status(400).json({
                     sucess: false,
                     message:
                         'This discount is in time, please delete if you want remove the discount!',
                 });
             }
-            updatedData.startSale = moment.utc(updatedData.startSale, 'DD-MM-YYYY HH:mm').toDate();
-            updatedData.endSale = moment.utc(updatedData.endSale, 'DD-MM-YYYY HH:mm').toDate();
+            const updatedData = req.body;
+            updatedData.startSale = moment.tz(
+                updatedData.startSale,
+                'DD-MM-YYYY HH:mm',
+                'Asia/Bangkok',
+            );
+            updatedData.endSale = moment.tz(
+                updatedData.endSale,
+                'DD-MM-YYYY HH:mm',
+                'Asia/Bangkok',
+            );
             updatedData.saleProducts = updatedData.saleProducts.map((product) => ({
                 salePrice: product.price - (product.price * product.promotion) / 100,
                 promotion: product.promotion,
@@ -65,6 +99,10 @@ const SaleController = {
             }));
             const updateSale = await SaleModel.findByIdAndUpdate(saleID, updatedData, {
                 new: true,
+            });
+            return res.status(200).json({
+                message: 'Updated Sale sucessfully!',
+                data: updateSale,
             });
         } catch (error) {
             return res.status.json({
@@ -94,30 +132,95 @@ const SaleController = {
             });
         }
     },
-    checkProductSaleCart: async (detail_cart) => {
-        try {
-            console.log('detail_cart:', detail_cart);
-            const currentDate = new Date();
-            const findProductSale = await SaleModel.find();
-            const checkProductSaleInTime = await SaleModel.find({
-                startSale: { $lte: currentDate },
-                endSale: { $gte: currentDate },
-            });
-            console.log('checkProductSaleInTime:', checkProductSaleInTime);
-            const cartWithSaleInfo = detail_cart.map((item) => {
-                const product = item.id_product;
-                //console.log('product:', product);
-                const matchingSale = checkProductSaleInTime.find((sale) => {
-                    return sale.saleProducts.some((saleProduct) =>
-                        saleProduct.id_product.equals(product),
-                    );
-                });
+    checkSaleOneProduct: async (_id) => {
+        //console.log('_id:', _id);
+        const findProduct = await ProductModel.findById(_id);
+        //console.log(findProduct);
+        if (!findProduct) {
+            return {
+                sucess: false,
+                status: 404,
+                message: 'The product not found',
+            };
+        }
+        const saleInfo = await SaleController.getCurrentSale(_id);
+        //console.log('saleInfo:', saleInfo);
+        if (saleInfo) {
+            findProduct.salePrice = saleInfo.salePrice;
+            return findProduct;
+        } else {
+            //console.log(456);
+            findProduct.salePrice = null;
+            return findProduct;
+        }
+    },
+
+    getCurrentSale: async (productId) => {
+        // try {
+        const checkProductSaleInTime = await SaleModel.find();
+        const currentDate = moment();
+        //console.log(123);
+        const currentSale = checkProductSaleInTime.filter((product) => {
+            const startSale = moment(product.startSale).tz('Asia/Bangkok');
+            const endSale = moment(product.endSale).tz('Asia/Bangkok');
+            return currentDate.isBetween(startSale, endSale);
+        });
+        if (currentSale.length > 0) {
+            const saleProduct = currentSale[0].saleProducts.find(
+                (sp) => sp.id_product.toString() === productId.toString(),
+            );
+            return saleProduct;
+        }
+        return null;
+    },
+    getCurrentSaleProduct: async (productId) => {
+        // try {
+        const checkProductSaleInTime = await SaleModel.find();
+        const currentDate = moment();
+        //console.log(123);
+        const currentSale = checkProductSaleInTime.filter((product) => {
+            const startSale = moment(product.startSale).tz('Asia/Bangkok');
+            const endSale = moment(product.endSale).tz('Asia/Bangkok');
+            return currentDate.isBetween(startSale, endSale);
+        });
+        if (currentSale.length > 0) {
+            const saleProduct = currentSale[0].saleProducts.find(
+                (sp) => sp.id_product.toString() === productId.toString(),
+            );
+            if (saleProduct) {
                 return {
-                    ...item.toObject(),
-                    matchingSale: matchingSale || null,
+                    startSale: moment(currentSale[0].startSale).tz('Asia/Bangkok').format(),
+                    endSale: moment(currentSale[0].endSale).tz('Asia/Bangkok').format(),
+                    saleProduct: saleProduct,
+                };
+            }
+        }
+        return null;
+    },
+    allSale: async (req, res, next) => {
+        try {
+            //moment.tz.setDefault('Asia/Bangkok');
+            const findAllIdSale = await SaleModel.find().populate({
+                path: 'saleProducts.id_product',
+            });
+            //console.log(findAllIdSale);
+            const formattedSaleList = findAllIdSale.map((sale) => {
+                const startSale = moment(sale.startSale)
+                    .tz('Asia/Bangkok')
+                    .format('DD-MM-YYYY HH:mm');
+                //console.log('start:', startSale);
+                const endSale = moment(sale.endSale).tz('Asia/Bangkok').format('DD-MM-YYYY HH:mm');
+                //console.log('end:', endSale);
+                return {
+                    ...sale._doc,
+                    startSale,
+                    endSale,
                 };
             });
-            return cartWithSaleInfo;
+            return res.status(200).json({
+                sucess: true,
+                data: formattedSaleList,
+            });
         } catch (error) {
             return res.status(500).json({
                 sucess: false,
@@ -125,34 +228,168 @@ const SaleController = {
             });
         }
     },
-    checkSaleProduct: async (data) => {
+    detailSaleProduct: async (req, res, next) => {
         try {
-            console.log('data:', data);
-            const currentDate = new Date();
-            const findProduct = await ProductModel.find();
-            const checkProductSaleInTime = await SaleModel.find({
-                startSale: { $lte: currentDate },
-                endSale: { $gte: currentDate },
-            });
-            console.log('checkProduct:', checkProductSaleInTime);
-            const productWithSaleInfo = data.map((item) => {
-                const id_product = item._id;
-                const matchingSale = checkProductSaleInTime.find((sale) => {
-                    return sale.saleProducts.some((saleProduct) =>
-                        saleProduct.id_product.equals(id_product),
-                    );
+            const findIdSale = await SaleModel.findById(req.params._id)
+                .populate({
+                    path: 'saleProducts.id_product',
+                })
+                .exec();
+            if (!findIdSale) {
+                return res.status(404).json({
+                    sucess: false,
+                    message: 'The Sale not found!',
                 });
-                return {
-                    ...item.toObject(),
-                    matchingSale: matchingSale,
-                };
+            }
+            //console.log(findIdSale);
+            const startSale = moment(findIdSale.startSale)
+                .tz('Asia/Bangkok')
+                .format('DD-MM-YYYY HH:mm');
+            //console.log(startSale);
+            const endSale = moment(findIdSale.endSale)
+                .tz('Asia/Bangkok')
+                .format('DD-MM-YYYY HH:mm');
+            return res.status(200).json({
+                sucess: true,
+                data: {
+                    ...findIdSale._doc,
+                    startSale,
+                    endSale,
+                },
             });
-            return productWithSaleInfo;
         } catch (error) {
             return res.status(500).json({
                 sucess: false,
                 message: error.message,
             });
+        }
+    },
+    saleCompleted: async (req, res, next) => {
+        try {
+            const findIdSale = await SaleModel.find();
+            const currentDate = moment();
+            //console.log(currentDate);
+            const checkSaleCompleted = findIdSale.filter((sale) => {
+                //const startSale = moment(sale.startSale).tz('Asia/Bangkok');
+                const endSale = moment(sale.endSale).tz('Asia/Bangkok');
+                return currentDate.isAfter(endSale);
+            });
+            if (checkSaleCompleted.length == 0) {
+                return res.status(404).json({
+                    sucess: false,
+                    message: 'No completed sales found!',
+                });
+            }
+            return res.status(200).json({
+                sucess: true,
+                data: checkSaleCompleted,
+            });
+        } catch (error) {
+            return res.status(500).json({
+                sucess: false,
+                message: error.message,
+            });
+        }
+    },
+    saleActive: async (req, res, next) => {
+        try {
+            const findIdSale = await SaleModel.find();
+            const currentDate = moment();
+            const checkSaleActive = findIdSale.filter((sale) => {
+                const startSale = moment(sale.startSale).tz('Asia/Bangkok');
+                const endSale = moment(sale.endSale).tz('Asia/Bangkok');
+                return currentDate.isBetween(startSale, endSale);
+            });
+            if (checkSaleActive.length == 0) {
+                return res.status(404).json({
+                    return: false,
+                    message: 'No active sales found!',
+                });
+            }
+            return res.status(200).json({
+                sucess: true,
+                data: checkSaleActive,
+            });
+        } catch (error) {
+            return res.status(500).json({
+                sucess: false,
+                message: error.message,
+            });
+        }
+    },
+    saleUpcoming: async (req, res, next) => {
+        try {
+            const findIdSale = await SaleModel.find();
+            const currentDate = moment();
+            //console.log(currentDate);
+            const checkSaleUpcoming = findIdSale.filter((sale) => {
+                const startSale = moment(sale.startSale).tz('Asia/Bangkok');
+                return currentDate.isBefore(startSale);
+            });
+            if (checkSaleUpcoming.length == 0) {
+                return res.status(404).json({
+                    sucess: false,
+                    message: 'No upcoming sales found!',
+                });
+            }
+            return res.status(200).json({
+                sucess: true,
+                data: checkSaleUpcoming,
+            });
+        } catch (error) {
+            return res.status(500).json({
+                sucess: true,
+                message: error.message,
+            });
+        }
+    },
+    checkConflictProductSale: async (req, res, next) => {
+        try {
+            const startDate = moment(req.body.startSale, 'DD-MM-YYYY HH:mm').tz('Asia/Bangkok');
+            const endDate = moment(req.body.endSale, 'DD-MM-YYYY HH:mm').tz('Asia/Bangkok');
+
+            // Find all sales that overlap with the requested time range
+            const overlappingSales = await SaleModel.find({
+                $or: [
+                    { startSale: { $lte: endDate }, endSale: { $gte: startDate } },
+                    { startSale: { $gte: startDate, $lte: endDate } },
+                ],
+            }).populate({
+                path: 'saleProducts.id_product',
+            });
+            //console.log('overlapping:', overlappingSales);
+            const overlappingProductIds = overlappingSales.flatMap((sale) =>
+                sale.saleProducts.map((product) => product.id_product.toString()),
+            );
+            //console.log('overlappingProductIds:', overlappingProductIds);
+            // Find all products
+            const allProducts = await ProductModel.find({});
+            console.log('nonConflictProduct:', !overlappingProductIds);
+            const nonProductsWithConflict = allProducts.filter(
+                (product) => !overlappingProductIds.includes(product._id.toString()),
+            );
+            const nonProductsWithConflictFiltered = nonProductsWithConflict.filter(
+                (product) =>
+                    !overlappingSales.some((sale) =>
+                        sale.saleProducts.some(
+                            (saleProduct) =>
+                                saleProduct.id_product._id.toString() === product._id.toString(),
+                        ),
+                    ),
+            );
+            //console.log('nonConmflict:', nonProductsWithConflict);
+            //console.log('productsWithConflict:', nonProductsWithConflict);
+            return res.status(200).json({
+                sucess: true,
+                data: {
+                    productWithConflict: overlappingSales,
+                    nonProductsWithConflict: nonProductsWithConflictFiltered,
+                },
+            });
+            //res.json({ overlappingSales });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Internal Server Error' });
         }
     },
 };

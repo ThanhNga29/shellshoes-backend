@@ -3,28 +3,29 @@ const ProductModel = require('../../models/product.model');
 const BlogModel = require('../../models/blog.model');
 const uploadMiddleware = require('../../middleware/upload.mid');
 const cloudinary = require('cloudinary').v2;
+const momentTimeZone = require('moment-timezone');
+const { json } = require('body-parser');
 
 const BlogController = {
     createBlog: async (req, res, next) => {
         try {
-            //console.log(req.body);
             const title = req.body.title;
-            //console.log(title);
             const body = req.body.body;
             const id_product = JSON.parse(req.body.id_product);
-            const createAt = moment.utc(req.body.createAt, 'DD-MM-YYYY HH:mm').toDate();
-            //console.log(typeof createAt);
-            const endDate = moment.utc(req.body.endDate, 'DD-MM-YYYY HH:mm').toDate();
+            //console.log(id_product);
+            const createAt = moment.tz(req.body.createAt, 'DD-MM-YYYY HH:mm', 'Asia/Bangkok');
+            console.log(createAt);
+            const endDate = moment.tz(req.body.endDate, 'DD-MM-YYYY HH:mm', 'Asia/Bangkok');
+            console.log(endDate);
             const isValidStartEnd = moment(endDate).isSameOrAfter(createAt, 'minute');
-            //console.log(isValidStartEnd);
             if (isValidStartEnd) {
                 const newBlog = await new BlogModel({
                     title: title,
                     body: body,
                     image: req.file.path,
                     id_product: id_product,
-                    createAt: createAt,
-                    endDate: endDate,
+                    createAt: createAt.toDate(),
+                    endDate: endDate.toDate(),
                 });
                 const savedBlog = await newBlog.save();
                 return res.status(200).json({
@@ -50,20 +51,48 @@ const BlogController = {
     },
     updateBlog: async (req, res, next) => {
         try {
+            // const id = req.body;
+            // console.log(id);
             const id_product = JSON.parse(req.body.id_product);
-            const updatedBlogData = {
-                title: req.body.title,
-                body: req.body.body,
-                createAt: moment.utc(req.body.createAt, 'DD-MM-YYYY HH:mm').toDate(),
-                endDate: moment.utc(req.body.endDate, 'DD-MM-YYYY HH:mm').toDate(),
-                id_product: id_product,
-            };
-            if (req.file) {
-                updatedBlogData.image = req.file.path;
-            }
+            // console.log(id_product);
             const conditionalBlogData = {
                 _id: req.params._id,
             };
+            const blogId = await BlogModel.findById(conditionalBlogData);
+            //console.log(blogId);
+            if (!blogId) {
+                return res.status(404).json({
+                    sucess: false,
+                    message: 'The blog not found!',
+                });
+            }
+            //const updateData = req.body;
+            const now = moment();
+            //console.log(now);
+            const createAt = moment(blogId.createAt).tz('Asia/Bangkok');
+            //console.log(createAt);
+            const endDate = moment(blogId.endDate).tz('Asia/Bangkok');
+            //console.log(endDate);
+            if (now.isBetween(createAt, endDate)) {
+                return res.status(400).json({
+                    sucess: false,
+                    message: 'This blog is in time, please delete if you want remove the blog!',
+                });
+            }
+            const updatedBlogData = {
+                title: req.body.title,
+                body: req.body.body,
+                createAt: moment.tz(req.body.createAt, 'DD-MM-YYYY HH:mm', 'Asia/Bangkok'),
+                endDate: moment.tz(req.body.endDate, 'DD-MM-YYYY HH:mm', 'Asia/Bangkok'),
+                id_product: id_product,
+                // createAt: moment.utc(req.body.createAt, 'DD-MM-YYYY HH:mm').toDate(),
+                // endDate: moment.utc(req.body.endDate, 'DD-MM-YYYY HH:mm').toDate(),
+            };
+
+            if (req.file) {
+                updatedBlogData.image = req.file.path;
+            }
+
             const updatedBlog = await BlogModel.findOneAndUpdate(
                 conditionalBlogData,
                 updatedBlogData,
@@ -71,14 +100,15 @@ const BlogController = {
                     new: true,
                 },
             );
+
             return res.status(200).json({
-                message: 'Updated blog sucessfully!',
+                message: 'Updated blog successfully!',
                 data: updatedBlog,
             });
         } catch (error) {
             return res.status(500).json({
                 sucess: false,
-                error: error.message,
+                message: error.message,
             });
         }
     },
@@ -103,20 +133,47 @@ const BlogController = {
             });
         }
     },
+    //
     allBlog: async (req, res, next) => {
         try {
             const id_Blog = await BlogModel.find().populate({
                 path: 'id_product',
             });
-            //console.log(id_Blog);
-            const now = new Date();
+            const now = moment().utc();
             //console.log(now);
             const filterBlogs = id_Blog.filter((blog) => {
-                return moment(now).isBetween(moment(blog.createAt), moment(blog.endDate));
+                const createAt = moment(blog.createAt).tz('Asia/Bangkok');
+                const endDate = moment(blog.endDate).tz('Asia/Bangkok');
+                return now.isBetween(createAt, endDate);
             });
+            //console.log(filterBlogs);
             return res.status(200).json({
                 sucess: true,
                 data: filterBlogs,
+            });
+        } catch (error) {
+            return res.status(500).json({
+                sucess: false,
+                message: error.message,
+            });
+        }
+    },
+    detailBlog: async (req, res, next) => {
+        try {
+            const findBlog = await BlogModel.findOne({ _id: req.params._id })
+                .populate({
+                    path: 'id_product',
+                })
+                .exec();
+            if (!findBlog) {
+                return res.status(404).json({
+                    sucess: false,
+                    message: 'The blog not found!',
+                });
+            }
+            return res.status(200).json({
+                sucess: true,
+                data: findBlog,
             });
         } catch (error) {
             return res.status(500).json({

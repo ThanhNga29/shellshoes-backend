@@ -11,8 +11,8 @@ productRouter.get(
 );
 productRouter.get(
     '/api/product/detail/:_id',
-    tokenMiddleware.verifyTokenAndUserAuthor,
-    productController.productDetail,
+    //tokenMiddleware.verifyTokenAndUserAuthor,
+    productController.detailProduct,
 );
 productRouter.get(
     '/api/allproduct',
@@ -27,7 +27,7 @@ productRouter.post(
 productRouter.put(
     '/api/product/edit/:_id',
     tokenMiddleware.verifyTokenAndAdmin,
-    uploadMiddleware.single('image'),
+    uploadMiddleware.array('image'),
     productController.updateProduct,
 );
 productRouter.delete(
@@ -35,7 +35,8 @@ productRouter.delete(
     tokenMiddleware.verifyTokenAndAdmin,
     productController.deleteProduct,
 );
-productRouter.post('/api/search', productController.searchProduct);
+productRouter.get('/api/search', productController.searchProduct);
 productRouter.get('/api/checkstock', productController.checkStock);
-
+productRouter.get('/api/home', productController.productHomePage);
+productRouter.get('/api/products/:page', productController.productPagination);
 module.exports = productRouter;

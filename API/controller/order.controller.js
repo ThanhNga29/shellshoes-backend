@@ -6,8 +6,11 @@ const AccountModel = require('../../models/user.model');
 const ProductModel = require('../../models/product.model');
 const NoteModel = require('../../models/note.model');
 const PaymentModel = require('../../models/payment.model');
-//const ProductController = require('./product.controller');
+const SaleModel = require('../../models/sale.model');
 const { checkStock } = require('./product.controller');
+//const { allProduct } = require('./product.controller');
+//const processAllProductResult = require('../../middleware/checkSale');
+const allProduct = require('../../middleware/checkSale');
 const OrderController = {
     getOrderByUser: async (req, res, next) => {
         try {
@@ -70,7 +73,8 @@ const OrderController = {
                 unit_price: item.unit_price,
                 price: item.price,
             }));
-            //console.log(orderProducts);
+            //console.log('orderProducts:', orderProducts);
+            //const checkSale = await allProduct();
             const resultCheckStock = [];
             for (const orderProduct of orderProducts) {
                 const productId = orderProduct.id_product;
@@ -91,14 +95,98 @@ const OrderController = {
                 },
                 { sufficientArray: [], inSufficientArray: [] },
             );
-            //console.log('sufficientArray', sufficientArray);
-            //console.log('Insufficient', inSufficientArray);
+            // console.log('sufficientArray', sufficientArray);
+            // console.log('Insufficient', inSufficientArray);
             if (inSufficientArray.length > 0) {
                 return res.status(400).json({
                     success: false,
                     message: 'Some products are out of stock',
                     data: inSufficientArray.map((m) => m.message),
                 });
+            }
+            const checkSale = await allProduct();
+            //console.log('checkSale:', checkSale);
+            const resultCheckSaleProduct = [];
+            let canProceedToOrder = true;
+
+            for (const orderProduct of orderProducts) {
+                const checkSaleProduct = checkSale.find(
+                    (saleProduct) =>
+                        saleProduct._id.toString() === orderProduct.id_product.toString(),
+                );
+                //console.log('checkSaleProduct:', checkSaleProduct);
+                //console.log('checkSaleProduct:', checkSaleProduct);
+                let messageQuantitySaleProduct = '';
+                if (checkSaleProduct) {
+                    const totalQuantityToPurchase =
+                        orderProduct.quantity + checkSaleProduct.soldQuantity;
+                    console.log('totalQuantityToPurchase:', totalQuantityToPurchase);
+                    if (totalQuantityToPurchase > checkSaleProduct.limit) {
+                        messageQuantitySaleProduct = `Exceeds the limit for product with ID ${orderProduct.id_product}`;
+                        canProceedToOrder = false;
+                    }
+                }
+
+                if (!canProceedToOrder) {
+                    return res.json({ message: messageQuantitySaleProduct });
+                }
+                let eligibilityMessage = '';
+                //let canProceedToOrder = '';
+
+                if (
+                    checkSaleProduct.salePrice !== null &&
+                    orderProduct.unit_price === checkSaleProduct.salePrice
+                ) {
+                    eligibilityMessage = `The product condition 1 with ${orderProduct} eligible`;
+                } else if (
+                    checkSaleProduct.salePrice === null &&
+                    orderProduct.unit_price === checkSaleProduct.price_product
+                ) {
+                    eligibilityMessage = `The product condition 2 with ${orderProduct} eligible`;
+                } else {
+                    eligibilityMessage = `The product with ID ${orderProduct.id_product} is not eligible`;
+                    canProceedToOrder = false;
+                }
+                resultCheckSaleProduct.push(eligibilityMessage);
+
+                //console.log(resultCheckSaleProduct);
+                if (!canProceedToOrder) {
+                    for (const result of resultCheckSaleProduct) {
+                        if (result.includes('not eligible')) {
+                            return res.json({ message: result });
+                        }
+                    }
+                }
+            }
+            // console.log('resultCheckSaleProduct:', resultCheckSaleProduct);
+            // console.log('canProcess:', canProceedToOrder);
+            // if (!canProceedToOrder) {
+            //     for (const result of resultCheckSaleProduct) {
+            //         if (result.includes('not eligible')) {
+            //             return res.json({ message: result });
+            //         }
+            //     }
+            // }
+            for (const orderProduct of orderProducts) {
+                const updateCheckSaleProduct = checkSale.find(
+                    (saleProduct) =>
+                        saleProduct._id.toString() === orderProduct.id_product.toString(),
+                );
+                //console.log('updateCheckSaleProduct:', updateCheckSaleProduct);
+                if (updateCheckSaleProduct) {
+                    const updatedSoldQuantity =
+                        updateCheckSaleProduct.soldQuantity + orderProduct.quantity;
+                    //console.log('updatedSoldQuantity:', updatedSoldQuantity);
+                    const saleToUpdate = await SaleModel.findOneAndUpdate(
+                        { 'saleProducts.id_product': orderProduct.id_product.toString() },
+                        {
+                            $set: {
+                                'saleProducts.$.soldQuantity': updatedSoldQuantity,
+                            },
+                        },
+                        { new: true },
+                    );
+                }
             }
             for (const product of sufficientArray) {
                 const productId = product.data.id_product;
@@ -147,9 +235,9 @@ const OrderController = {
                 data: { ...savedOrder._doc, dateOrder: formattedTimestamp },
             });
         } catch (error) {
-            res.status(500).json({
+            return res.status(500).json({
                 sucess: false,
-                msg: error.message,
+                message: error.message,
             });
         }
     },

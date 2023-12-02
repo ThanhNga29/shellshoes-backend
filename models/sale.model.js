@@ -15,10 +15,13 @@ const SaleSchema = new Schema({
             salePrice: {
                 type: Number,
             },
-            // id_sale: {
-            //     type: mongoose.Schema.Types.ObjectId,
-            //     ref: 'sale',
-            // },
+            limit: {
+                type: Number,
+            },
+            soldQuantity: {
+                type: Number,
+                default: 0,
+            },
         },
     ],
     startSale: {
@@ -27,6 +30,11 @@ const SaleSchema = new Schema({
     endSale: {
         type: Date,
     },
+    // status: {
+    //     type: String,
+    //     enum: ['upcoming', 'active', 'completed'],
+    //     default: 'upcoming',
+    // },
 });
 
 const SaleModel = mongoose.model('sale', SaleSchema);
