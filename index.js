@@ -1,6 +1,5 @@
 const cors = require('cors');
 const express = require('express');
-//const mongoose = require('mongoose');
 
 const bodyParser = require('body-parser');
 const app = express();
@@ -50,11 +49,6 @@ app.use(bodyParser.urlencoded({ extended: false }));
 // parse application/json
 app.use(bodyParser.json());
 connect();
-
-// mongoose.connect('mongodb://localhost:27017/BanHang', {
-//     useNewUrlParser: true,
-//     useUnifiedTopology: true,
-// });
 
 app.use(siteRouter);
 app.use(userRouter);
