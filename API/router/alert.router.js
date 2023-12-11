@@ -23,5 +23,6 @@ alertRouter.put(
     tokenMiddleware.verifyTokenAndAdmin,
     alertController.readAlert,
 );
+alertRouter.post('/api/order/alert', alertController.alert);
 alertRouter.get('/api/alert/all', tokenMiddleware.verifyTokenAndUser, alertController.alertAll);
 module.exports = alertRouter;

@@ -1,19 +1,20 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-const MessageSchema = new Schema({
-    senderId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'users',
+const MessageSchema = new Schema(
+    {
+        senderId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'users',
+        },
+        content: {
+            type: String,
+        },
     },
-    content: {
-        type: String,
+    {
+        timestamps: true,
     },
-    timestamp: {
-        type: Date,
-        default: Date.now(),
-    },
-});
+);
 const DetailChatRoomSchema = new Schema({
     roomId: {
         type: mongoose.Schema.Types.ObjectId,

@@ -33,6 +33,9 @@ const AccountSchema = new Schema(
         },
     },
     {
+        timestamps: true,
+    },
+    {
         collection: 'users',
     },
 );

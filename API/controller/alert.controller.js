@@ -136,6 +136,35 @@ const alertController = {
             });
         }
     },
+    alert: async (req, res, next) => {
+        try {
+            const { id_user, id_order } = req.body;
+            const order = await OrderModel.findOne({ _id: id_order, id_user: id_user });
+            if (!order) {
+                return res.status(404).json({
+                    sucess: false,
+                    message: 'The order not found!',
+                });
+            }
+            const title = '';
+            const message = `Đơn hàng ${id_order}`;
+            const formattedTimestamp = moment().format('DD/MM/YYYY HH:mm');
+            const alert = new AlertModel({
+                title: title,
+                message: message,
+                id_user: id_user,
+            });
+            await alert.save();
+            return res.status(200).json({
+                sucess: true,
+            });
+        } catch (error) {
+            return res.status(500).json({
+                sucess: false,
+                message: error.message,
+            });
+        }
+    },
 };
 
 module.exports = alertController;

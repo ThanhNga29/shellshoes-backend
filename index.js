@@ -1,5 +1,7 @@
 const cors = require('cors');
 const express = require('express');
+//const mongoose = require('mongoose');
+
 const bodyParser = require('body-parser');
 const app = express();
 const connect = require('./config/index');
@@ -22,6 +24,8 @@ const blogRouter = require('./API/router/blog.router');
 const saleRouter = require('./API/router/sale.router');
 const favoriteRouter = require('./API/router/favorite.router');
 const chatRouter = require('./API/router/chat.router');
+const messageRouter = require('./API/router/message.router');
+const statisticalRouter = require('./API/router/statistical.router');
 
 const AccountModel = require('./models/user.model');
 const ProductModel = require('./models/product.model');
@@ -39,12 +43,18 @@ const SaleModel = require('./models/sale.model');
 const FavoriteModel = require('./models/favorite.model');
 const ChatModel = require('./models/chat.model');
 const DetailChatRoomModel = require('./models/detailChat.model');
+
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }));
 
 // parse application/json
 app.use(bodyParser.json());
 connect();
+
+// mongoose.connect('mongodb://localhost:27017/BanHang', {
+//     useNewUrlParser: true,
+//     useUnifiedTopology: true,
+// });
 
 app.use(siteRouter);
 app.use(userRouter);
@@ -58,7 +68,15 @@ app.use(blogRouter);
 app.use(saleRouter);
 app.use(favoriteRouter);
 app.use(chatRouter);
+app.use(messageRouter);
+app.use(statisticalRouter);
 //app.use('/api/account/', AccountRouter)
-app.listen(3000, () => {
-    console.log(`Server started on port`);
+const PORT = process.env.PORT;
+
+//const db = mongoose.connection;
+app.get('', (req, res) => {
+    res.status(200).send({ message: 'Welcome' });
+});
+app.listen(PORT, () => {
+    console.log(`Server started on port ` + PORT);
 });

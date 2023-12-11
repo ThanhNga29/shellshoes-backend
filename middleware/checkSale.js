@@ -15,7 +15,7 @@ const allProduct = async (req, res, next) => {
             const endSale = moment(product.endSale).tz('Asia/Bangkok');
             return currentDate.isBetween(startSale, endSale);
         });
-
+        //console.log('currentSales:', currentSales);
         const productsWithSaleInfo = JSON.parse(JSON.stringify(products));
 
         productsWithSaleInfo.forEach((product) => {
@@ -33,6 +33,8 @@ const allProduct = async (req, res, next) => {
                 product.salePrice = saleProduct.salePrice;
                 product.soldQuantity = saleProduct.soldQuantity;
                 product.limit = saleProduct.limit;
+                //product._id = saleProduct._id;
+                product.id_sale = saleProduct._id;
             }
         });
         return productsWithSaleInfo;

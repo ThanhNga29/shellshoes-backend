@@ -53,36 +53,5 @@ const chatController = {
             });
         }
     },
-    sendMessage: async (req, res, next) => {
-        try {
-            const { roomId, senderId, content } = req.body;
-            //console.log(req.body);
-            const chat = await DetailChatRoomModel.findOne({ roomId: roomId });
-            if (!chat) {
-                return res.status(404).json({
-                    sucess: false,
-                    message: 'The room chat not found!',
-                });
-            }
-            const newMessage = {
-                senderId,
-                content,
-            };
-            const detailChat = await DetailChatRoomModel.findOneAndUpdate(
-                { roomId },
-                { $push: { messages: newMessage } },
-                { new: true },
-            );
-            return res.status(200).json({
-                sucess: true,
-                data: detailChat,
-            });
-        } catch (error) {
-            return res.status(500).json({
-                sucess: false,
-                message: error.message,
-            });
-        }
-    },
 };
 module.exports = chatController;

@@ -1,3 +1,6 @@
+//const mongoose = require('mongoose');
+//const { ObjectId } = require('mongoose').Types;
+//const { ObjectId } = require('mongoose').mongo;
 const moment = require('moment');
 const OrderModel = require('../../models/order.model');
 const DetailOrderModel = require('../../models/detail-order.model');
@@ -11,6 +14,7 @@ const { checkStock } = require('./product.controller');
 //const { allProduct } = require('./product.controller');
 //const processAllProductResult = require('../../middleware/checkSale');
 const allProduct = require('../../middleware/checkSale');
+const { default: mongoose } = require('mongoose');
 const OrderController = {
     getOrderByUser: async (req, res, next) => {
         try {
@@ -47,7 +51,7 @@ const OrderController = {
             });
         }
     },
-    createOrderProduct: async (req, res, next) => {
+    createOrderProduct1: async (req, res, next) => {
         try {
             const userId = req.user.userId;
             const cart = await CartModel.findOne({ id_user: userId });
@@ -105,7 +109,14 @@ const OrderController = {
                 });
             }
             const checkSale = await allProduct();
-            //console.log('checkSale:', checkSale);
+            // console.log('checkSale:', checkSale);
+            // const filteredProducts = checkSale.filter(
+            //     (product) =>
+            //         typeof product.salePrice !== 'undefined' &&
+            //         typeof product.soldQuantity !== 'undefined' &&
+            //         typeof product.limit !== 'undefined',
+            // );
+            // console.log('filterProduct:', filteredProducts);
             const resultCheckSaleProduct = [];
             let canProceedToOrder = true;
 
@@ -114,7 +125,7 @@ const OrderController = {
                     (saleProduct) =>
                         saleProduct._id.toString() === orderProduct.id_product.toString(),
                 );
-                //console.log('checkSaleProduct:', checkSaleProduct);
+                console.log('checkSaleProduct:', checkSaleProduct);
                 //console.log('checkSaleProduct:', checkSaleProduct);
                 let messageQuantitySaleProduct = '';
                 if (checkSaleProduct) {
@@ -190,6 +201,260 @@ const OrderController = {
             }
             for (const product of sufficientArray) {
                 const productId = product.data.id_product;
+                const size = product.data.size;
+                const quantityToSubtract = product.data.quantity;
+                const updateQuantity = await ProductModel.findOneAndUpdate(
+                    {
+                        _id: productId,
+                        'sizes.size': size,
+                    },
+                    {
+                        $inc: { 'sizes.$.quantity': -quantityToSubtract },
+                    },
+                    { new: true },
+                );
+            }
+            // console.log(123);
+            //console.log('inSufficient', inSufficientArray);
+            const newDetailOrder = await DetailOrderModel.create(
+                sufficientArray.map((product) => ({
+                    quantity: product.data.quantity,
+                    size: product.data.size,
+                    id_product: product.data.id_product,
+                    unit_price: product.data.unit_price,
+                    price: product.data.price,
+                })),
+            );
+            //console.log('newdetail', newDetailOrder);
+            const newTotalPrice = newDetailOrder.reduce((total, item) => total + item.price, 0);
+            //console.log(newTotalPrice);
+            const order = new OrderModel({
+                id_user: userId,
+                address: req.body.adress,
+                status: 'Pending',
+                orderProducts: newDetailOrder.map((orderItem) => orderItem._id),
+                totalPrice: newTotalPrice,
+                adress: req.body.address,
+                id_note: newNote._id,
+                id_payment: newPay._id,
+            });
+            const savedOrder = await order.save();
+            const formattedTimestamp = moment().format('DD/MM/YYYY HH:mm');
+
+            return res.status(200).json({
+                success: true,
+                message: 'Order created successfully!',
+                data: { ...savedOrder._doc, dateOrder: formattedTimestamp },
+            });
+        } catch (error) {
+            return res.status(500).json({
+                sucess: false,
+                message: error.message,
+            });
+        }
+    },
+    createOrderProduct: async (req, res, next) => {
+        try {
+            const userId = req.user.userId;
+            const cart = await CartModel.findOne({ id_user: userId });
+            if (!cart) {
+                return res.status(404).json({
+                    sucess: false,
+                    message: 'The cart not found!',
+                });
+            }
+            const newNoteData = {
+                fullname: req.body.fullname,
+                phone: req.body.phone,
+            };
+            const newNote = await NoteModel.create(newNoteData);
+            const newPayMent = {
+                payName: req.body.payName,
+            };
+            const newPay = await PaymentModel.create(newPayMent);
+            const orderProducts = req.body.orderProducts.map((item) => ({
+                quantity: item.quantity,
+                size: item.size,
+                id_product: item.id_product,
+                unit_price: item.unit_price,
+                price: item.price,
+            }));
+            //console.log('orderProducts:', orderProducts);
+            //const checkSale = await allProduct();
+            const resultCheckStock = [];
+            for (const orderProduct of orderProducts) {
+                const productId = orderProduct.id_product;
+                const size = orderProduct.size;
+                const quantity = orderProduct.quantity;
+                const productCheckStock = await checkStock(productId, size, quantity, orderProduct);
+
+                resultCheckStock.push(productCheckStock);
+            }
+            const { sufficientArray, inSufficientArray } = resultCheckStock.reduce(
+                (acc, current) => {
+                    if (current.sucess === true) {
+                        acc.sufficientArray.push(current);
+                    } else {
+                        acc.inSufficientArray.push(current);
+                    }
+                    return acc;
+                },
+                { sufficientArray: [], inSufficientArray: [] },
+            );
+            //console.log('sufficientArray', sufficientArray);
+            // console.log('Insufficient', inSufficientArray);
+            if (inSufficientArray.length > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Some products are out of stock',
+                    data: inSufficientArray.map((m) => m.message),
+                });
+            }
+            const checkSale = await allProduct();
+            console.log('checkSale:', checkSale);
+            const resultCheckSaleProduct = [];
+            let canProceedToOrder = true;
+
+            for (const orderProduct of orderProducts) {
+                const checkSaleProduct = checkSale.find(
+                    (saleProduct) =>
+                        saleProduct._id.toString() === orderProduct.id_product.toString(),
+                );
+                //console.log('checkSaleProduct:', checkSaleProduct);
+                //console.log('checkSaleProduct:', checkSaleProduct);
+                let messageQuantitySaleProduct = '';
+                if (
+                    checkSaleProduct &&
+                    typeof checkSaleProduct.salePrice !== 'undefined' &&
+                    typeof checkSaleProduct.soldQuantity !== 'undefined' &&
+                    typeof checkSaleProduct.limit !== 'undefined'
+                ) {
+                    const totalQuantityToPurchase =
+                        orderProduct.quantity + checkSaleProduct.soldQuantity;
+                    //console.log('totalQuantityToPurchase:', totalQuantityToPurchase);
+                    if (totalQuantityToPurchase > checkSaleProduct.limit) {
+                        messageQuantitySaleProduct = `Exceeds the limit for product with ID ${orderProduct.id_product}`;
+                        canProceedToOrder = false;
+                    }
+                }
+
+                if (!canProceedToOrder) {
+                    return res.json({ message: messageQuantitySaleProduct });
+                }
+                let eligibilityMessage = '';
+                //let canProceedToOrder = '';
+
+                if (
+                    checkSaleProduct.salePrice !== null &&
+                    orderProduct.unit_price === checkSaleProduct.salePrice
+                ) {
+                    eligibilityMessage = `The product condition 1 with ${orderProduct} eligible`;
+                    // console.log(123);
+                } else if (
+                    checkSaleProduct.salePrice === null &&
+                    orderProduct.unit_price === checkSaleProduct.price_product
+                ) {
+                    eligibilityMessage = `The product condition 2 with ${orderProduct} eligible`;
+                    //console.log(456);
+                } else {
+                    eligibilityMessage = `The product with ID ${orderProduct.id_product} is not eligible`;
+                    canProceedToOrder = false;
+                }
+                resultCheckSaleProduct.push(eligibilityMessage);
+
+                //console.log(resultCheckSaleProduct);
+                if (!canProceedToOrder) {
+                    for (const result of resultCheckSaleProduct) {
+                        if (result.includes('not eligible')) {
+                            return res.json({ message: result });
+                        }
+                    }
+                }
+            }
+            // console.log('resultCheckSaleProduct:', resultCheckSaleProduct);
+            // console.log('canProcess:', canProceedToOrder);
+            // if (!canProceedToOrder) {
+            //     for (const result of resultCheckSaleProduct) {
+            //         if (result.includes('not eligible')) {
+            //             return res.json({ message: result });
+            //         }
+            //     }
+            // }
+            // console.log(112233);
+            // for (const orderProduct of orderProducts) {
+            //     const updateCheckSaleProduct = checkSale.find(
+            //         (saleProduct) =>
+            //             saleProduct._id.toString() === orderProduct.id_product.toString(),
+            //     );
+            //     console.log('updateCheckSaleProduct:', updateCheckSaleProduct);
+            //     if (
+            //         updateCheckSaleProduct &&
+            //         //typeof orderProduct.salePrice !== 'undefined' &&
+            //         typeof updateCheckSaleProduct.soldQuantity !== 'undefined' &&
+            //         typeof updateCheckSaleProduct.limit !== 'undefined'
+            //     ) {
+            //         console.log(11223);
+            //         const updatedSoldQuantity =
+            //             updateCheckSaleProduct.soldQuantity + orderProduct.quantity;
+            //         //console.log('updateCheckSaleProduct:', updateCheckSaleProduct);
+            //         console.log('updatedSoldQuantity:', updatedSoldQuantity);
+            //         const saleToUpdate = await SaleModel.findOneAndUpdate(
+            //             { 'saleProducts.id_product': orderProduct.id_product.toString() },
+            //             {
+            //                 $set: {
+            //                     'saleProducts.$.soldQuantity': updatedSoldQuantity,
+            //                 },
+            //             },
+            //             { new: true },
+            //         );
+            //     }
+            // }
+            for (const orderProduct of orderProducts) {
+                const updateCheckSaleProduct = checkSale.find(
+                    (saleProduct) =>
+                        saleProduct._id.toString() === orderProduct.id_product.toString(),
+                );
+
+                //console.log('updateCheckSaleProduct:', updateCheckSaleProduct);
+
+                if (
+                    updateCheckSaleProduct &&
+                    typeof updateCheckSaleProduct.soldQuantity !== 'undefined' &&
+                    typeof updateCheckSaleProduct.limit !== 'undefined'
+                ) {
+                    //console.log(11223);
+
+                    // Kiểm tra xem sản phẩm có đang trong chương trình khuyến mãi hay không
+                    const isProductInSale = updateCheckSaleProduct.salePrice !== null;
+
+                    const updatedSoldQuantity =
+                        updateCheckSaleProduct.soldQuantity + orderProduct.quantity;
+
+                    // Nếu sản phẩm đang trong chương trình khuyến mãi, hãy cập nhật soldQuantity
+                    if (isProductInSale) {
+                        //console.log('updatedSoldQuantity:', updatedSoldQuantity);
+                        const saleToUpdate = await SaleModel.findOneAndUpdate(
+                            {
+                                'saleProducts._id': updateCheckSaleProduct.id_sale.toString(),
+                            },
+                            {
+                                $set: {
+                                    'saleProducts.$.soldQuantity': updatedSoldQuantity,
+                                },
+                            },
+                            { new: true },
+                        );
+                        //console.log('saleToUpdate:', saleToUpdate);
+                    }
+                }
+            }
+
+            //console.log(987);
+            for (const product of sufficientArray) {
+                const productId = product.data.id_product;
+                //console.log('productId:', productId);
+                // const productIdObjectID = mongoose.mongo.ObjectId(productId)
+                // console.log('productIdObject:', productIdObjectID);
                 const size = product.data.size;
                 const quantityToSubtract = product.data.quantity;
                 const updateQuantity = await ProductModel.findOneAndUpdate(

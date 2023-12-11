@@ -47,13 +47,16 @@ const productController = {
                 path: 'id_category',
             });
             const currentDate = moment();
+            //console.log(currentDate);
             const checkProductSaleInTime = await SaleModel.find();
             const currentSales = checkProductSaleInTime.filter((product) => {
                 const startSale = moment(product.startSale).tz('Asia/Bangkok');
+                //console.log('startSale:', startSale);
                 const endSale = moment(product.endSale).tz('Asia/Bangkok');
+                //console.log('endSale:', endSale);
                 return currentDate.isBetween(startSale, endSale);
             });
-
+            console.log(currentSales);
             const productsWithSaleInfo = JSON.parse(JSON.stringify(products));
 
             productsWithSaleInfo.forEach((product) => {
