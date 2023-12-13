@@ -43,6 +43,14 @@ const FavoriteModel = require('./models/favorite.model');
 const ChatModel = require('./models/chat.model');
 const DetailChatRoomModel = require('./models/detailChat.model');
 
+const corOption = {
+    origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+};
+
+app.use(cors(corOption));
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }));
 

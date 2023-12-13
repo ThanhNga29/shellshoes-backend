@@ -5,11 +5,17 @@ const DetailOrder = require('../../models/detail-order.model');
 const statisticalController = {
     monthlyRevenue: async (req, res, next) => {
         try {
-            const findRevenue = await OrderModel.find();
+            const { year } = req.query;
+            const startOfMonth = moment(`${year}-01-01`).toISOString();
+            const endOfMonth = moment(`${year}-12-31`).toISOString();
+
+            const findRevenue = await OrderModel.find({
+                dateOrder: { $gte: startOfMonth, $lte: endOfMonth },
+            });
             const revenueByMonth = {};
             findRevenue.forEach((total) => {
                 const { totalPrice, dateOrder } = total;
-                const yearMonth = moment(dateOrder).format('YYYY-MM');
+                const yearMonth = moment(dateOrder).format('MM');
                 revenueByMonth[yearMonth] = (revenueByMonth[yearMonth] || 0) + totalPrice;
             });
             return res.status(200).json({
@@ -88,12 +94,17 @@ const statisticalController = {
     },
     monthlyUser: async (req, res, next) => {
         try {
-            const findUser = await UserModel.find();
+            const { year } = req.query;
+            const startOfMonth = moment(`${year}-01-01`).toISOString();
+            const endOfMonth = moment(`${year}-12-31`).toISOString();
+            const findUser = await UserModel.find({
+                createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+            });
             const userByMonth = {};
             findUser.forEach((total) => {
                 if (total.isAdmin === false) {
                     const { createdAt } = total;
-                    const userMonth = moment(createdAt).format('YYYY-MM');
+                    const userMonth = moment(createdAt).format('MM');
                     userByMonth[userMonth] = (userByMonth[userMonth] || 0) + 1;
                 }
             });
@@ -171,6 +182,26 @@ const statisticalController = {
             return res.status(200).json({
                 sucess: true,
                 data: sumPricePorduct,
+            });
+        } catch (error) {
+            return res.status(500).json({
+                sucess: false,
+                message: error.message,
+            });
+        }
+    },
+    monthlySell: async (req, res, next) => {
+        try {
+            const findOrder = await OrderModel.find();
+            const monthlySell = {};
+            findOrder.forEach((total) => {
+                const { dateOrder } = total;
+                const sellMonth = moment(dateOrder).format('YYYY-MM');
+                monthlySell[sellMonth] = (monthlySell[sellMonth] || 0) + 1;
+            });
+            return res.status(200).json({
+                sucess: true,
+                data: monthlySell,
             });
         } catch (error) {
             return res.status(500).json({

@@ -6,7 +6,7 @@ const uploadMiddleware = require('../../middleware/upload.mid');
 
 productRouter.get(
     '/api/filterproduct',
-    tokenMiddleware.verifyTokenAndUserAuthor,
+    //tokenMiddleware.verifyTokenAndUserAuthor,
     productController.filterProduct,
 );
 productRouter.get(

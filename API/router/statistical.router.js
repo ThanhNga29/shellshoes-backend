@@ -10,4 +10,5 @@ statisticalRouter.get('/api/user/number', statisticalController.userNumber);
 statisticalRouter.get('/api/monthly/user', statisticalController.monthlyUser);
 statisticalRouter.get('/api/sell/number', statisticalController.sellNumber);
 statisticalRouter.get('/api/ten/high/revenue', statisticalController.topTenHighestRevenueProducts);
+
 module.exports = statisticalRouter;

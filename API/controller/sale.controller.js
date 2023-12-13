@@ -173,9 +173,10 @@ const SaleController = {
         }
         return null;
     },
-    getCurrentSaleProduct: async (productId) => {
+    getCurrentSaleProduct1: async (productId) => {
         // try {
         const checkProductSaleInTime = await SaleModel.find();
+        console.log('checkProductSaleInTime:', checkProductSaleInTime);
         const currentDate = moment();
         //console.log(123);
         const currentSale = checkProductSaleInTime.filter((product) => {
@@ -183,10 +184,12 @@ const SaleController = {
             const endSale = moment(product.endSale).tz('Asia/Bangkok');
             return currentDate.isBetween(startSale, endSale);
         });
+        console.log('currentSale:', currentSale);
         if (currentSale.length > 0) {
-            const saleProduct = currentSale[0].saleProducts.find(
+            const saleProduct = currentSale.saleProducts.find(
                 (sp) => sp.id_product.toString() === productId.toString(),
             );
+            console.log('saleProduct:', saleProduct);
             if (saleProduct) {
                 return {
                     startSale: moment(currentSale[0].startSale).tz('Asia/Bangkok').format(),
@@ -196,6 +199,40 @@ const SaleController = {
             }
         }
         return null;
+    },
+    getCurrentSaleProduct: async (productId) => {
+        try {
+            const checkProductSaleInTime = await SaleModel.find();
+            console.log('checkProductSaleInTime:', checkProductSaleInTime);
+            const currentDate = moment();
+
+            let matchingSaleProduct = null;
+
+            checkProductSaleInTime.forEach((sale) => {
+                const startSale = moment(sale.startSale).tz('Asia/Bangkok');
+                const endSale = moment(sale.endSale).tz('Asia/Bangkok');
+
+                if (currentDate.isBetween(startSale, endSale)) {
+                    const saleProduct = sale.saleProducts.find(
+                        (sp) => sp.id_product.toString() === productId.toString(),
+                    );
+
+                    if (saleProduct) {
+                        matchingSaleProduct = {
+                            startSale: startSale.format(),
+                            endSale: endSale.format(),
+                            saleProduct: saleProduct,
+                        };
+                    }
+                }
+            });
+
+            // console.log('matchingSaleProduct:', matchingSaleProduct);
+            return matchingSaleProduct;
+        } catch (error) {
+            console.error('Error in getCurrentSaleProduct:', error);
+            return null;
+        }
     },
     allSale: async (req, res, next) => {
         try {

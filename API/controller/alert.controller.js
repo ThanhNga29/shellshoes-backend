@@ -136,7 +136,7 @@ const alertController = {
             });
         }
     },
-    alert: async (req, res, next) => {
+    alertWaiting: async (req, res, next) => {
         try {
             const { id_user, id_order } = req.body;
             const order = await OrderModel.findOne({ _id: id_order, id_user: id_user });
@@ -146,8 +146,8 @@ const alertController = {
                     message: 'The order not found!',
                 });
             }
-            const title = '';
-            const message = `Đơn hàng ${id_order}`;
+            const title = 'Đang chờ lấy hàng';
+            const message = `Đơn hàng ${id_order} của bạn đang chờ lấy hàng`;
             const formattedTimestamp = moment().format('DD/MM/YYYY HH:mm');
             const alert = new AlertModel({
                 title: title,
@@ -157,6 +157,10 @@ const alertController = {
             await alert.save();
             return res.status(200).json({
                 sucess: true,
+                data: {
+                    ...alert._doc,
+                    createAt: formattedTimestamp,
+                },
             });
         } catch (error) {
             return res.status(500).json({

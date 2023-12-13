@@ -23,7 +23,16 @@ const productController = {
                     message: 'The category not found!',
                 });
             }
-            if (!productList || productList.length === 0) {
+            let productArray = [];
+            for (const product of productList) {
+                const checkProduct = await getCurrentSaleProduct(product._id);
+                const result = {
+                    product: product,
+                    productInSale: checkProduct,
+                };
+                productArray.push(result);
+            }
+            if (!productArray || productArray.length === 0) {
                 res.status(404).json({
                     sucess: false,
                     message: 'No products found in this category',
@@ -31,7 +40,7 @@ const productController = {
             }
             return res.status(200).json({
                 sucess: true,
-                data: productList,
+                data: productArray,
             });
         } catch (error) {
             return res.status(500).json({
@@ -56,7 +65,7 @@ const productController = {
                 //console.log('endSale:', endSale);
                 return currentDate.isBetween(startSale, endSale);
             });
-            console.log(currentSales);
+            //console.log(currentSales);
             const productsWithSaleInfo = JSON.parse(JSON.stringify(products));
 
             productsWithSaleInfo.forEach((product) => {
@@ -74,7 +83,8 @@ const productController = {
                     product.salePrice = saleProduct.salePrice;
                 }
             });
-            res.json(productsWithSaleInfo);
+            const reversedProducts = productsWithSaleInfo.reverse();
+            res.json(reversedProducts);
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
@@ -82,16 +92,17 @@ const productController = {
     //[POST] /api/newproduct
     createNewproduct: async (req, res, next) => {
         try {
-            //console.log(filedata);
-            //console.log(req.body.sizes);
+            // console.log('reqBody:', req.body);
+            // console.log('reqFiles:', req.files);
             const id_category = await CategoryModel.findOne({ category: req.body.category });
-            //const size = req.body.sizes.map((size) => JSON.parse(size))
+            //const sizeArray = req.body.sizes.map((size) => JSON.parse(size));
             const sizes = JSON.parse(req.body.sizes);
             //console.log(sizes);
             const newSizeProduct = sizes.map((size) => ({
                 size: size.size,
                 quantity: size.quantity,
             }));
+            // console.log(newSizeProduct);
             const newProduct = await new ProductModel({
                 name_product: req.body.name_product,
                 //oldPrice_product: req.body.oldPrice_product,
@@ -108,8 +119,15 @@ const productController = {
             // if (!newProduct) {
             //     res.status(500).send('the product cannot be created');
             // }
-            return res.status(200).send(newProduct);
+            return res.status(200).send(product);
         } catch (error) {
+            // if (req.files && req.files.length > 0) {
+            //     req.files.forEach((file) => {
+            //         if (file && file.filename) {
+            //             cloudinary.uploader.destroy(file.filename);
+            //         }
+            //     });
+            // }
             if (req.file || req.files) {
                 cloudinary.uploader.destroy(req.file.filename);
             }
